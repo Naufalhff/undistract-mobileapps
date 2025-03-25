@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "298398937653",
+    "project_id": "undistract-e0987",
+    "storage_bucket": "undistract-e0987.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:298398937653:android:c72565cd21ac0073adf77c",
+        "android_client_info": {
+          "package_name": "com.example.undistract"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIe8woDbJjxHFIegDaUPD-HJ4mGkqp-HQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
