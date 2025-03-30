@@ -4,21 +4,29 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.undistract.ui.navigation.AppNavHost
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
+import com.example.undistract.features.block_schedules.domain.scheduleLogWorker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Dapatkan database
+        val database = AppDatabase.getDatabase(this)
+
+        // Dapatkan DAO dari database
+        val blockSchedulesDao = database.blockSchedulesDao()
+
+        // Buat repository dan viewModel
+        val repository = BlockSchedulesRepository(blockSchedulesDao)
+        val viewModel = BlockSchedulesViewModel(repository)
+
         enableEdgeToEdge()
         setContent {
-            AppNavHost(context = this)
+            BlockSchedulesScreen(viewModel)
         }
     }
 }
