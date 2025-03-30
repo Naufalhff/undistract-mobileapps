@@ -2,6 +2,7 @@ package com.example.undistract.features.add_behavior.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,18 +33,27 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.example.undistract.R
+import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.ui.components.AppSelector
 import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.components.RestrictionNameInput
+import com.example.undistract.ui.navigation.BottomNavItem
 
 @Composable
-fun AddRestrictionScreen(navController: NavController) {
+fun AddRestrictionScreen(
+    navController: NavHostController,
+    viewModel: SelectAppsViewModel
+) {
+    viewModel.updateCurrentRoute("add_restriction")
+
     Column (
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+
         // BACK BUTTON
         Row (
             modifier = Modifier
@@ -51,13 +65,14 @@ fun AddRestrictionScreen(navController: NavController) {
         ) {
             BackButton (
                 modifier = Modifier.size(24.dp),
-                onClick = {}
+                onClick = { navController.navigate(BottomNavItem.UsageLimit.route)}
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Text(
                 text = stringResource(R.string.add_restriction),
+                color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -86,8 +101,8 @@ fun AddRestrictionScreen(navController: NavController) {
             Row {
                 Text(
                     stringResource(R.string.choose_what_restriction),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
 
@@ -107,12 +122,14 @@ fun AddRestrictionScreen(navController: NavController) {
                 ) {
                     FlexboxItem(
                         icon = Icons.Default.Star,
-                        label = stringResource(R.string.block_permanently)
+                        label = stringResource(R.string.block_permanently),
+                        onClick = { navController.navigate("block_permanent") }
                     )
 
                     FlexboxItem(
                         icon = Icons.Default.Star,
-                        label = stringResource(R.string.block_on_a_schedule)
+                        label = stringResource(R.string.block_on_a_schedule),
+                        onClick = { navController.navigate("add_restriction") }
                     )
                 }
 
@@ -125,12 +142,14 @@ fun AddRestrictionScreen(navController: NavController) {
                 ) {
                     FlexboxItem(
                         icon = Icons.Default.Star,
-                        label = stringResource(R.string.restrict_daily_usage)
+                        label = stringResource(R.string.restrict_daily_usage),
+                        onClick = { navController.navigate("add_restriction") }
                     )
 
                     FlexboxItem(
                         icon = Icons.Default.Star,
-                        label = stringResource(R.string.apply_custom_session_restriction)
+                        label = stringResource(R.string.apply_custom_session_restriction),
+                        onClick = { navController.navigate("add_restriction") }
                     )
                 }
             }
@@ -143,18 +162,25 @@ fun AddRestrictionScreen(navController: NavController) {
 @Composable
 fun FlexboxItem(
     icon: ImageVector,
-    label: String
+    label: String,
+    onClick: () -> Unit
 ) {
+    var isClicked by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .size(145.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.background)
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.tertiary,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                color = if (isClicked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
             )
-            .clip(RoundedCornerShape(8.dp)),
+            .clickable {
+                isClicked = !isClicked
+                onClick()
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -167,7 +193,7 @@ fun FlexboxItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary
+                tint = if (isClicked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -175,7 +201,7 @@ fun FlexboxItem(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = if (isClicked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
