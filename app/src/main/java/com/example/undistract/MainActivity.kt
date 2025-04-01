@@ -10,8 +10,17 @@ import com.example.undistract.features.block_schedules.presentation.BlockSchedul
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import androidx.lifecycle.lifecycleScope
+import com.example.undistract.features.get_installed_apps.data.InstalledAppsRepository
+import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.get_installed_apps.domain.GetInstalledAppsUseCase
+import com.example.undistract.ui.navigation.AppNavHost
+import com.example.undistract.ui.theme.UndistractTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var installedApps: List<AppInfo>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -27,8 +36,18 @@ class MainActivity : ComponentActivity() {
         val viewModel = VariableSessionViewModel(repository)
 
         enableEdgeToEdge()
-        setContent {
-            VariableSessionScreen(viewModel)
+
+        val repository = InstalledAppsRepository(this)
+        val getInstalledAppsUseCase = GetInstalledAppsUseCase(repository)
+
+        lifecycleScope.launch {
+            installedApps = getInstalledAppsUseCase(this@MainActivity)
+
+            setContent {
+                UndistractTheme {
+                    AppNavHost(context = this@MainActivity, installedApps = installedApps)
+                }
+            }
         }
     }
 }

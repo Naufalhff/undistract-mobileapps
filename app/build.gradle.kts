@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.undistract"
-        minSdk = 26
+        minSdk = 35
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -93,4 +93,5 @@ dependencies {
     implementation ("androidx.compose.runtime:runtime:1.6.3")
     implementation ("androidx.activity:activity-compose:1.8.2")
 
+    implementation(libs.accompanist.navigation.animation)
 }
