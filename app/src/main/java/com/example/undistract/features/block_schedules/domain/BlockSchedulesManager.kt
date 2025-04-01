@@ -65,9 +65,4 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
             currentTime.isAfter(startTime) || currentTime.isBefore(endTime)
         }
     }
-
-    // Fungsi untuk mencatat aplikasi yang dibuka (log)
-    fun logOpenedApp(packageName: String) {
-        Log.d("BlockScheduleManager", "Aplikasi dibuka: $packageName")
-    }
 }

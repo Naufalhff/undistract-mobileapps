@@ -80,4 +80,17 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.8.9")
 
+    // Lifecycle components
+    implementation ("androidx.lifecycle:lifecycle-service:2.7.0")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+
+    // SavedState
+    implementation ("androidx.savedstate:savedstate-ktx:1.2.1")
+
+    // Compose
+    implementation ("androidx.compose.ui:ui:1.6.3")
+    implementation ("androidx.compose.runtime:runtime:1.6.3")
+    implementation ("androidx.activity:activity-compose:1.8.2")
+
 }

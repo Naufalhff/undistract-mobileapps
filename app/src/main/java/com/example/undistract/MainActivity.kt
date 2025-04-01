@@ -7,8 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
-import com.example.undistract.features.block_schedules.domain.scheduleLogWorker
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,14 +20,15 @@ class MainActivity : ComponentActivity() {
 
         // Dapatkan DAO dari database
         val blockSchedulesDao = database.blockSchedulesDao()
+        val variableSessionDao = database.variableSessionDao()
 
         // Buat repository dan viewModel
-        val repository = BlockSchedulesRepository(blockSchedulesDao)
-        val viewModel = BlockSchedulesViewModel(repository)
+        val repository = VariableSessionRepository(variableSessionDao)
+        val viewModel = VariableSessionViewModel(repository)
 
         enableEdgeToEdge()
         setContent {
-            BlockSchedulesScreen(viewModel)
+            VariableSessionScreen(viewModel)
         }
     }
 }

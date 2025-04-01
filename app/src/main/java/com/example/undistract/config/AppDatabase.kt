@@ -7,10 +7,13 @@ import androidx.room.RoomDatabase
 
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
 
-@Database(entities = [BlockSchedulesEntity::class], version = 1, exportSchema = false)
+@Database(entities = [BlockSchedulesEntity::class, VariableSessionEntity::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun blockSchedulesDao(): BlockSchedulesDao
+    abstract fun variableSessionDao(): VariableSessionDao
 
     companion object {
         @Volatile

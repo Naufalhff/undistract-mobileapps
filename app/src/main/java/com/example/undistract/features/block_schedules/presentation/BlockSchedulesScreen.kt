@@ -20,14 +20,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.min
 import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.select_apps.presentation.AppInfo
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.example.undistract.ui.theme.ColorNew

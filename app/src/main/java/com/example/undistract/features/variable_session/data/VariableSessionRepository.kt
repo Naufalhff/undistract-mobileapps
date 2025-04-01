@@ -1,32 +1,26 @@
-package com.example.undistract.features.block_schedules.data
+package com.example.undistract.features.variable_session.data
 
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
 
-class BlockSchedulesRepository(
-    private val dao: BlockSchedulesDao
+class VariableSessionRepository(
+    private val dao: VariableSessionDao
 )  {
 
-    // Menambahkan beberapa aplikasi sekaligus (setiap aplikasi sebagai baris terpisah)
-    suspend fun addBlockSchedulesForMultipleApps(
-        apps: List<Pair<String, String>>, // List pasangan (nama aplikasi, packageName)
-        daysOfWeek: String,
-        isAllDay: Boolean,
-        startTime: String?,
-        endTime: String?,
+    suspend fun addVariableSessionForMultipleApps(
+        apps: List<Pair<String, String>>,
+        minutesLeft: Int,
         isActive: Boolean
     ) {
         for (app in apps) {
-            val schedule = BlockSchedulesEntity(
+            val variableSession = VariableSessionEntity(
                 appName = app.first,   // Nama aplikasi
                 packageName = app.second,  // Package name aplikasi
-                daysOfWeek = daysOfWeek, // Hari yang dipilih (misalnya: "S, M, T, W")
-                isAllDay = isAllDay, // Apakah blokir sepanjang hari?
-                startTime = startTime, // Waktu mulai (null jika isAllDay = true)
-                endTime = endTime, // Waktu akhir (null jika isAllDay = true)
-                isActive = isActive // Status aktif atau tidak
+                minutesLeft = minutesLeft,
+                isActive = isActive
             )
-            dao.insertBlockSchedules(schedule)
+            dao.insertVariableSession(variableSession)
         }
     }
 
