@@ -58,16 +58,6 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- Service untuk Menampilkan Dialog Overlay -->
-        <service
-            android:name=".core.FloatingDialogService"
-            android:permission="android.permission.FOREGROUND_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-            </intent-filter>
-        </service>
-
     </application>
 
 </manifest>
