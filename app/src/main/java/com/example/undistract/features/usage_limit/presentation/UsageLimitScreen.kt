@@ -17,23 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.undistract.ui.components.UnderConstructionScreen
 
 @Composable
 fun UsageLimitScreen(context: Context, navController: NavHostController) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Ini Screen Usage Limit",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
+        UnderConstructionScreen()
 
         FloatingActionButton(
             onClick = {

@@ -2,6 +2,7 @@ package com.example.undistract.features.block_schedules.domain
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
 import com.example.undistract.core.AppAccessibilityService
@@ -65,4 +66,26 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
             currentTime.isAfter(startTime) || currentTime.isBefore(endTime)
         }
     }
+
+    fun getAppInfoFromPackageNames(context: Context, packageNames: List<String>): List<Pair<String, String>> {
+        val packageManager: PackageManager = context.packageManager
+        val appInfoList = mutableListOf<Pair<String, String>>()
+
+        for (packageName in packageNames) {
+            try {
+                // Mendapatkan nama aplikasi berdasarkan package name
+                val appName = packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                ).toString()
+                // Menambahkan pasangan nama aplikasi dan package name
+                appInfoList.add(Pair(appName, packageName))
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Jika package tidak ditemukan, bisa menangani error di sini
+                appInfoList.add(Pair("Unknown", packageName))
+            }
+        }
+
+        return appInfoList
+    }
+
 }

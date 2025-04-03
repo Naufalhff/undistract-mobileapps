@@ -24,17 +24,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Dapatkan database
-        val database = AppDatabase.getDatabase(this)
-
-        // Dapatkan DAO dari database
-        val blockSchedulesDao = database.blockSchedulesDao()
-        val variableSessionDao = database.variableSessionDao()
-
-        // Buat repository dan viewModel
-        val repository = VariableSessionRepository(variableSessionDao)
-        val viewModel = VariableSessionViewModel(repository)
-
         enableEdgeToEdge()
 
         val repository = InstalledAppsRepository(this)

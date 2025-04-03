@@ -2,6 +2,9 @@ package com.example.undistract.features.variable_session.domain
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -35,44 +38,146 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.undistract.core.AppAccessibilityService
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import java.time.LocalDate
 import java.time.LocalTime
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class VariableSessionManager(private val context: Context, private val dao: VariableSessionDao) {
 
-    suspend fun askLimit(packageName: String): Boolean {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
+    private var startTime: Long = 0L
+    private var elapsedSeconds = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private var stopwatchRunnable: Runnable? = null
+    private var hasShownToast = false
 
+    suspend fun askLimit(packageName: String): Boolean {
+        val session = dao.getVariableSession(packageName).firstOrNull()
         return session?.let {
-            it.minutesLeft <= 0 && it.isActive
+            it.secondsLeft <= 0 && it.isActive
         } ?: false
     }
 
-
     suspend fun isLimitedApp(packageName: String): Boolean {
-        val session = dao.getVariableSession(packageName)?.firstOrNull() // Ambil item pertama jika ada
-        return session != null
+        val session = dao.getVariableSession(packageName).firstOrNull()
+        return session?.let {
+            it.secondsLeft > 0 && it.isActive
+        } ?: false
     }
 
-    suspend fun reduceMinutesLeft(packageName: String) {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
-        session?.let {
-            if (it.minutesLeft > 0) {
-                dao.updateMinutesLeft(packageName, it.minutesLeft - 1)
-                Log.d("VariableSessionManager", "Reduced minutesLeft for $packageName to ${it.minutesLeft - 1}")
+    fun startTimer(packageName: String, viewModel: VariableSessionViewModel) {
+        startTime = System.currentTimeMillis()
+        elapsedSeconds = 0L
+
+        stopwatchRunnable = object : Runnable {
+            override fun run() {
+                elapsedSeconds++
+
+                // Setiap 15 detik, lakukan pengurangan waktu dan pengecekan
+                if (elapsedSeconds % 15 == 0L) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        // Pengurangan waktu, pastikan selesai sebelum lanjut
+                        viewModel.subtractSecondsLeft(packageName, 15)
+
+                        // Cek apakah sisa waktu kurang dari 60 detik
+                        if (viewModel.stillHas60Second(packageName) && !hasShownToast) {
+                            withContext(Dispatchers.Main) {
+                                showToast("$packageName: Waktu tersisa kurang dari 1 menit!")
+                                hasShownToast = true
+                            }
+                        }
+
+                        Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
+
+                        delay(500)
+                        checkAndBlockApp(packageName)
+                    }
+                }
+                handler.postDelayed(this, 1000)
             }
-        } ?: Log.d("VariableSessionManager", "Session not found for $packageName")
+        }
+
+        hasShownToast = false
+        handler.post(stopwatchRunnable!!)
     }
 
-    suspend fun updateSessionTime(packageName: String, duration: Int) {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
+
+
+    fun stopTimer(packageName: String, viewModel: VariableSessionViewModel) {
+        stopwatchRunnable?.let {
+            handler.removeCallbacks(it) // Hentikan callback jika masih berjalan
+            stopwatchRunnable = null // Pastikan stopwatchRunnable tidak digunakan lagi
+        }
+
+        Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
+
+        // Hitung sisa waktu yang belum dikurangi ke database
+        val remainingTime = elapsedSeconds % 30
+        if (remainingTime > 0) {
+            viewModel.subtractSecondsLeft(packageName, remainingTime.toInt())
+            Log.d("UsageTracker", "Mengurangi sisa waktu $remainingTime detik dari limit aplikasi.")
+        }
+
+        // Reset elapsedSeconds agar timer siap untuk digunakan lagi
+        elapsedSeconds = 0L
+
+        Log.d("UsageTracker", "Timer untuk $packageName telah dihentikan.")
+    }
+
+    suspend fun checkAndBlockApp(packageName: String) {
+        val session = dao.getVariableSession(packageName).firstOrNull()
         session?.let {
-            val updatedMinutes = it.minutesLeft + duration
-            dao.updateMinutesLeft(packageName, updatedMinutes)
-            Log.d("VariableSessionManager", "Updated minutesLeft for $packageName to $updatedMinutes")
-        } ?: Log.d("VariableSessionManager", "Session not found for $packageName")
+            if (session.secondsLeft <= 0) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Session timed out, app blocked", Toast.LENGTH_SHORT).show()
+                }
+                dao.updateSecondsLeft(session.packageName, 0)
+                blockApp()
+            } else {
+                Log.d("SessionInfo", "Sisa waktu: ${session.secondsLeft} detik")
+            }
+        }
+    }
+
+    private fun blockApp() {
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(homeIntent)
+    }
+
+    fun showToast(message: String) {
+        handler.post {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun getAppInfoFromPackageNames(context: Context, packageNames: List<String>): List<Pair<String, String>> {
+        val packageManager: PackageManager = context.packageManager
+        val appInfoList = mutableListOf<Pair<String, String>>()
+
+        for (packageName in packageNames) {
+            try {
+                // Mendapatkan nama aplikasi berdasarkan package name
+                val appName = packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                ).toString()
+                // Menambahkan pasangan nama aplikasi dan package name
+                appInfoList.add(Pair(appName, packageName))
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Jika package tidak ditemukan, bisa menangani error di sini
+                appInfoList.add(Pair("Unknown", packageName))
+            }
+        }
+        return appInfoList
     }
 
     @Composable

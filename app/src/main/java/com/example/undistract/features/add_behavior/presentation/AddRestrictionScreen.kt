@@ -129,7 +129,7 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_on_a_schedule),
-                        onClick = { navController.navigate("add_restriction") }
+                        onClick = { navController.navigate("block_schedules") }
                     )
                 }
 
@@ -149,7 +149,7 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.apply_custom_session_restriction),
-                        onClick = { navController.navigate("add_restriction") }
+                        onClick = { navController.navigate("variable_session") }
                     )
                 }
             }

@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
@@ -23,20 +24,36 @@ import com.example.undistract.features.select_apps.presentation.SelectAppsViewMo
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
 import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.navigation.SelectedAppsRouteObserver
 
 
 @Composable
 fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val navController = rememberNavController()
+    val database = AppDatabase.getDatabase(context)
 
-    // Inisialisasi repository
+    // Dapatkan DAO dari database
+    val blockSchedulesDao = database.blockSchedulesDao()
+    val variableSessionDao = database.variableSessionDao()
+
+    // Inisialisasi repository & dao
     val selectAppsRepository = remember { SelectAppsRepository() }
+    val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
+    val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
         factory = SelectAppsViewModelFactory(context, selectAppsRepository)
     )
+    val blockSchedulesViewModel = BlockSchedulesViewModel(blockSchedulesRepository)
+    val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
 
     // Observer untuk memantau perubahan rute
     SelectedAppsRouteObserver(navController, selectAppsViewModel)
@@ -45,7 +62,9 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val routesWithoutNavBar = listOf(
         "add_restriction",
         "select_apps",
-        "block_permanent"
+        "block_permanent",
+        "block_schedules",
+        "variable_session"
     )
 
     Scaffold(
@@ -90,6 +109,22 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 BlockPermanentScreen(
                     navController = navController,
                     viewModel = selectAppsViewModel
+                )
+            }
+            composable("block_schedules")
+            {
+                BlockSchedulesScreen(
+                    navController = navController,
+                    viewModel = blockSchedulesViewModel,
+                    selectAppViewModel = selectAppsViewModel
+                )
+            }
+            composable("variable_session")
+            {
+                VariableSessionScreen(
+                    navController = navController,
+                    viewModel = variableSessionViewModel,
+                    selectAppViewModel = selectAppsViewModel
                 )
             }
         }

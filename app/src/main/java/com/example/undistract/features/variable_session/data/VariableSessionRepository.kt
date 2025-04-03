@@ -8,20 +8,45 @@ class VariableSessionRepository(
     private val dao: VariableSessionDao
 )  {
 
+    suspend fun getVariableSession(packageName: String): List<VariableSessionEntity> {
+        return dao.getVariableSession(packageName)
+    }
+
     suspend fun addVariableSessionForMultipleApps(
         apps: List<Pair<String, String>>,
-        minutesLeft: Int,
+        secondsLeft: Int,
         isActive: Boolean
     ) {
         for (app in apps) {
             val variableSession = VariableSessionEntity(
                 appName = app.first,   // Nama aplikasi
                 packageName = app.second,  // Package name aplikasi
-                minutesLeft = minutesLeft,
+                secondsLeft = secondsLeft,
                 isActive = isActive
             )
             dao.insertVariableSession(variableSession)
         }
+    }
+
+    suspend fun updateSecondsLeft(
+        packageName: String,
+        secondsLeft: Int
+    ) {
+        dao.updateSecondsLeft(packageName, secondsLeft)
+    }
+
+    suspend fun subtractSecondsLeft(
+        packageName: String,
+        secondsLeft: Int
+    ) {
+        dao.subtractSecondsLeft(packageName, secondsLeft)
+    }
+
+    suspend fun updateIsActive(
+        packageName: String,
+        isActive: Boolean
+    ) {
+        dao.updateIsActive(packageName, isActive)
     }
 
 //    // Mendapatkan semua jadwal blokir yang tersimpan

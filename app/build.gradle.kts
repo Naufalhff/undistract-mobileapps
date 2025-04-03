@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.undistract"
-        minSdk = 35
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -79,11 +79,6 @@ dependencies {
     implementation("androidx.room:room-paging:$room_version")
 
     implementation ("com.google.code.gson:gson:2.8.9")
-
-    // Lifecycle components
-    implementation ("androidx.lifecycle:lifecycle-service:2.7.0")
-    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
 
     // SavedState
     implementation ("androidx.savedstate:savedstate-ktx:1.2.1")

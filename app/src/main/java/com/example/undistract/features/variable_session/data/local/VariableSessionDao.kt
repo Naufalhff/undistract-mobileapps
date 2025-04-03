@@ -17,6 +17,12 @@ interface VariableSessionDao {
     @Query("DELETE FROM variable_session_table WHERE packageName = :packageName")
     suspend fun deleteVariableSession(packageName: String)
 
-    @Query("UPDATE variable_session_table SET minutesLeft = :minutesLeft WHERE packageName = :packageName")
-    suspend fun updateMinutesLeft(packageName: String, minutesLeft: Int)
+    @Query("UPDATE variable_session_table SET secondsLeft = :secondsLeft WHERE packageName = :packageName")
+    suspend fun updateSecondsLeft(packageName: String, secondsLeft: Int)
+
+    @Query("UPDATE variable_session_table SET secondsLeft = secondsLeft - :secondsLeft WHERE packageName = :packageName")
+    suspend fun subtractSecondsLeft(packageName: String, secondsLeft: Int)
+
+    @Query("UPDATE variable_session_table SET isActive = :isActive WHERE packageName = :packageName")
+    suspend fun updateIsActive(packageName: String, isActive: Boolean)
 }

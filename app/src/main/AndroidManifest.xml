@@ -2,10 +2,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.undistract">
 
-    <!-- Izin untuk Menampilkan Dialog di Atas Aplikasi Lain -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+    <!-- Query untuk mendeteksi aplikasi sistem tertentu dalam Installed Apps Repository-->
+    <queries>
+        <package android:name="com.google.android.youtube"/>
+        <package android:name="com.android.chrome"/>
+    </queries>
 
 
     <application

@@ -9,7 +9,9 @@ class SelectAppsRepository {
     private val allowedRoutes = setOf(
         "select_apps",
         "add_restriction",
-        "block_permanent"
+        "block_permanent",
+        "block_schedules",
+        "variable_session"
     )
 
     private val selectedAppsMap = mutableMapOf<String, Boolean>()

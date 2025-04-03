@@ -7,13 +7,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import com.example.undistract.ui.components.UnderConstructionScreen
 
 @Composable
 fun MyUsageScreen (context: Context, navController: NavHostController) {
-    Column (
-        modifier = Modifier
-            .fillMaxWidth()
-    ) {
-        Text("Ini Screen My Usage")
-    }
+    UnderConstructionScreen()
 }

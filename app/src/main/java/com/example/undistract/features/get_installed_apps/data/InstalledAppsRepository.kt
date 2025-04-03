@@ -9,9 +9,17 @@ class InstalledAppsRepository(private val context: Context) {
 
     fun getInstalledApps(): List<AppInfo> {
         val packageManager = context.packageManager
+
+        // List aplikasi sistem yang tetap akan ditampilkan
+        val allowedSystemApps = listOf(
+            "com.google.android.youtube",
+            "com.android.chrome",
+            // Tambah aplikasi lain (Tambahkan juga dalam query di Android Manifest)
+        )
+
         return packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { app ->
-                (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 || app.packageName in allowedSystemApps
             }
             .map { app ->
                 AppInfo(

@@ -33,58 +33,70 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
-    private var lastStartTime: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val context = this
+
+        // Ignore ketika user mengetik
+        val keyboardPackages = listOf(
+            "com.google.android.inputmethod.latin",
+            "com.microsoft.swiftkey",
+            "com.samsung.android.honeyboard"
+        )
+
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: "Nama Package gagal diambil"
             val currentTime = LocalTime.now()
             val currentTimeMillis = System.currentTimeMillis()
 
+
             Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
 
-            // Block on Schedules
+
             serviceScope.launch {
+
+                // Block on Schedules
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Aplikasi ini diblokir!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "This app is blocked!", Toast.LENGTH_SHORT).show()
                     }
                     Log.d("BlockApp", "Menutup aplikasi: $packageName")
-                    blockScheduleManager.blockApp()  // Menjalankan blok aplikasi
+                    blockScheduleManager.blockApp()
+                    return@launch
                 }
 
+                // Variable Session
                 if (variableSessionManager.askLimit(packageName)) {
-                    // Memulai FloatingDialogService alih-alih VariableSessionActivity
-                    val intent = Intent(context, VariableSessionDialogActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) // Penting agar bisa berjalan di luar MainActivity
-                    context.startActivity(intent)  // Memulai FloatingDialogService untuk menampilkan dialog mengambang
+                    withContext(Dispatchers.Main) {
+                        val intent = Intent(context, VariableSessionDialogActivity::class.java).apply {
+                            putExtra("PACKAGE_NAME", packageName)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 }
+                // Cek apakah aplikasi termasuk dalam daftar aplikasi terbatas
+                if (variableSessionManager.isLimitedApp(packageName)) {
+                    // Jika aplikasi yang dibuka berbeda dari sebelumnya dan bukan keyboard
+                    if (lastPackageName != packageName && !keyboardPackages.contains(packageName)) {
+                        lastPackageName?.let { previousPackage ->
+                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                        }
+
+                        variableSessionManager.startTimer(packageName, variableSessionViewModel)
+                        lastPackageName = packageName
+                    }
+                } else {
+                    // Jika aplikasi tidak dibatasi dan bukan keyboard, hentikan timer jika sebelumnya ada yang berjalan
+                    if (lastPackageName != null && !keyboardPackages.contains(packageName)) {
+                        lastPackageName?.let { previousPackage ->
+                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                        }
+                        lastPackageName = null
+                    }
+                }
+
             }
-
-
-//            // Variable Session
-//            if (packageName != lastPackageName) {
-//                // Aplikasi berpindah, simpan durasi penggunaan aplikasi sebelumnya
-//                lastPackageName?.let { previousPackage ->
-//                    val durationMinutes = (currentTimeMillis - lastStartTime) / 60000
-//                    serviceScope.launch {
-//                        variableSessionManager.updateSessionTime(previousPackage, durationMinutes.toInt())
-//                    }
-//                }
-//
-//                // Perbarui package yang sedang digunakan
-//                lastPackageName = packageName
-//                lastStartTime = currentTimeMillis
-//
-//                // Cek apakah aplikasi yang baru dibuka masuk dalam daftar yang dibatasi
-//                serviceScope.launch {
-//                    val isLimited = variableSessionManager.isLimitedApp(packageName)
-//                    if (isLimited) {
-//                        variableSessionManager.reduceMinutesLeft(packageName)
-//                    }
-//                }
-//            }
         }
     }
 

@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey
 data class VariableSessionEntity(
     val appName: String,
     val packageName: String,
-    val minutesLeft: Int,
+    val secondsLeft: Int,
     val isActive: Boolean
 )
 
