@@ -11,6 +11,9 @@ data class VariableSessionEntity(
     val appName: String,
     val packageName: String,
     val secondsLeft: Int,
+    val coolDownDuration: Long?,
+    val coolDownEndTime: Long?,
+    val isOnCoolDown: Boolean,
     val isActive: Boolean
 )
 

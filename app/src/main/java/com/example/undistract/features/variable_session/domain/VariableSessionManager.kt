@@ -118,14 +118,12 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
 
         Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
 
-        // Hitung sisa waktu yang belum dikurangi ke database
         val remainingTime = elapsedSeconds % 30
         if (remainingTime > 0) {
             viewModel.subtractSecondsLeft(packageName, remainingTime.toInt())
             Log.d("UsageTracker", "Mengurangi sisa waktu $remainingTime detik dari limit aplikasi.")
         }
 
-        // Reset elapsedSeconds agar timer siap untuk digunakan lagi
         elapsedSeconds = 0L
 
         Log.d("UsageTracker", "Timer untuk $packageName telah dihentikan.")
@@ -133,8 +131,17 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
 
     suspend fun checkAndBlockApp(packageName: String) {
         val session = dao.getVariableSession(packageName).firstOrNull()
+        val currentTime = System.currentTimeMillis()
         session?.let {
             if (session.secondsLeft <= 0) {
+                if (session.coolDownDuration != null && session.coolDownDuration > 0) {
+                    val coolDownDuration = session.coolDownDuration * 1000
+                    val coolDownEndTime = System.currentTimeMillis() + coolDownDuration
+
+                    dao.updateCoolDownEndTime(packageName, coolDownEndTime)
+                    dao.updateIsOnCoolDown(packageName, true)
+                }
+
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Session timed out, app blocked", Toast.LENGTH_SHORT).show()
                 }
@@ -146,7 +153,20 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         }
     }
 
-    private fun blockApp() {
+    suspend fun canStartNewSession(packageName: String): Boolean {
+        val session = dao.getVariableSession(packageName).firstOrNull()
+        val currentTime = System.currentTimeMillis()
+
+        return session?.let {
+            if (it.isOnCoolDown && it.coolDownEndTime != null && currentTime >= it.coolDownEndTime) {
+                dao.updateIsOnCoolDown(packageName, false)
+                return@let true
+            }
+            !it.isOnCoolDown
+        } ?: true
+    }
+
+    fun blockApp() {
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -166,98 +186,15 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
 
         for (packageName in packageNames) {
             try {
-                // Mendapatkan nama aplikasi berdasarkan package name
                 val appName = packageManager.getApplicationLabel(
                     packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 ).toString()
                 // Menambahkan pasangan nama aplikasi dan package name
                 appInfoList.add(Pair(appName, packageName))
             } catch (e: PackageManager.NameNotFoundException) {
-                // Jika package tidak ditemukan, bisa menangani error di sini
                 appInfoList.add(Pair("Unknown", packageName))
             }
         }
         return appInfoList
-    }
-
-    @Composable
-    fun ShowDialog(){
-        var isOn by remember { mutableStateOf("Off") }
-        var hours by remember { mutableStateOf("") }
-        var minutes by remember { mutableStateOf("") }
-        var showDialog by remember { mutableStateOf(false) }
-
-        // Konteks untuk dialog
-        val context = LocalContext.current
-        if (showDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Dialog(
-                    onDismissRequest = { showDialog = false },
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp)),
-                        color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Cool Down Period",
-                                style = MaterialTheme.typography.headlineSmall
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                OutlinedTextField(
-                                    value = hours,
-                                    onValueChange = { newValue ->
-                                        hours = newValue.toIntOrNull()?.toString() ?: ""
-                                    },
-                                    label = { Text("Hours") },
-                                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = minutes,
-                                    onValueChange = { newValue ->
-                                        minutes = newValue.toIntOrNull()?.toString() ?: ""
-                                    },
-                                    label = { Text("Minutes") },
-                                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = { showDialog = false }) {
-                                    Text(text = "Cancel")
-                                }
-                                TextButton(onClick = {
-                                    showDialog = false
-                                    isOn = if (minutes.isNotEmpty() && minutes != "0" || hours.isNotEmpty() && hours != "0") "On" else "Off"
-                                }) {
-                                    Text(text = "OK")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }

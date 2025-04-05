@@ -15,6 +15,9 @@ class VariableSessionRepository(
     suspend fun addVariableSessionForMultipleApps(
         apps: List<Pair<String, String>>,
         secondsLeft: Int,
+        coolDownDuration: Long?,
+        coolDownEndTime: Long?,
+        isOnCoolDown: Boolean,
         isActive: Boolean
     ) {
         for (app in apps) {
@@ -22,7 +25,11 @@ class VariableSessionRepository(
                 appName = app.first,   // Nama aplikasi
                 packageName = app.second,  // Package name aplikasi
                 secondsLeft = secondsLeft,
-                isActive = isActive
+                coolDownDuration = coolDownDuration,
+                coolDownEndTime = coolDownEndTime,
+                isOnCoolDown = isOnCoolDown,
+                isActive = isActive,
+
             )
             dao.insertVariableSession(variableSession)
         }
@@ -49,23 +56,10 @@ class VariableSessionRepository(
         dao.updateIsActive(packageName, isActive)
     }
 
-//    // Mendapatkan semua jadwal blokir yang tersimpan
-//    suspend fun getAllBlockSchedules(): List<BlockSchedulesEntity> {
-//        return dao.getAllBlockSchedules()
-//    }
-//
-//    // Mendapatkan jadwal berdasarkan packageName aplikasi
-//    suspend fun getBlockSchedulesForApp(packageName: String): List<BlockSchedulesEntity> {
-//        return dao.getBlockSchedules(packageName)
-//    }
-//
-//    // Menghapus jadwal blokir berdasarkan id
-//    suspend fun deleteBlockSchedules(id: Int) {
-//        dao.deleteBlockSchedulesById(id)
-//    }
-//
-//    // Mengupdate status aktif/tidaknya pemblokiran
-//    suspend fun updateBlockScheduleStatus(scheduleId: Int, isActive: Boolean) {
-//        dao.updateBlockSchedulesById(scheduleId, isActive)
-//    }
+    suspend fun updateCoolDownEndTime(
+        packageName: String,
+        coolDownEndTime: Long?
+    ) {
+        dao.updateCoolDownEndTime(packageName, coolDownEndTime)
+    }
 }

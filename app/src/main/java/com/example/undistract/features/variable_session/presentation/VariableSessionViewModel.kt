@@ -23,10 +23,13 @@ class VariableSessionViewModel(
     fun addVariableSession(
         apps: List<Pair<String, String>>,
         secondsLeft: Int,
+        coolDownDuration: Long?,
+        coolDownEndTime: Long?,
+        isOnCooldown: Boolean,
         isActive: Boolean
     ) {
         viewModelScope.launch {
-            repository.addVariableSessionForMultipleApps(apps, secondsLeft, isActive)
+            repository.addVariableSessionForMultipleApps(apps, secondsLeft, coolDownDuration, coolDownEndTime, isOnCooldown, isActive)
         }
     }
 
@@ -54,18 +57,6 @@ class VariableSessionViewModel(
     ) {
         viewModelScope.launch {
             repository.updateIsActive(packageName, isActive)
-        }
-    }
-
-    fun checkApp(packageName: String) {
-        viewModelScope.launch {
-            Log.d("LOG_VIEWMODEL","VIEW MODEL OK")
-            if (packageName == "com.google.android.youtube") {
-                _showDialog.value = true
-                Log.d("LOG_VIEWMODEL","Show Dialog: ${_showDialog.value}")
-            } else {
-                _showDialog.value = false
-            }
         }
     }
 

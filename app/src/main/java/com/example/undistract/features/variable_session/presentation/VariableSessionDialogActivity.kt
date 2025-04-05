@@ -13,7 +13,6 @@ class VariableSessionDialogActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Menambahkan layout Compose
         setContent {
             val navController = rememberNavController()
 

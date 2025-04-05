@@ -25,4 +25,10 @@ interface VariableSessionDao {
 
     @Query("UPDATE variable_session_table SET isActive = :isActive WHERE packageName = :packageName")
     suspend fun updateIsActive(packageName: String, isActive: Boolean)
+
+    @Query("UPDATE variable_session_table SET isOnCoolDown = :isOnCoolDown WHERE packageName = :packageName")
+    suspend fun updateIsOnCoolDown(packageName: String, isOnCoolDown: Boolean)
+
+    @Query("UPDATE variable_session_table SET coolDownEndTime = :coolDownEndTime WHERE packageName = :packageName")
+    suspend fun updateCoolDownEndTime(packageName: String, coolDownEndTime: Long?)
 }

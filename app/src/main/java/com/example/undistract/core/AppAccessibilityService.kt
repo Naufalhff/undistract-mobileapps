@@ -55,7 +55,7 @@ class AppAccessibilityService : AccessibilityService() {
 
             serviceScope.launch {
 
-                // Block on Schedules
+                // BLOCK ON SCHEDULES
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(context, "This app is blocked!", Toast.LENGTH_SHORT).show()
@@ -65,7 +65,15 @@ class AppAccessibilityService : AccessibilityService() {
                     return@launch
                 }
 
-                // Variable Session
+                // VARIABLE SESSION LIMIT
+                if (!variableSessionManager.canStartNewSession(packageName)) {
+                    withContext(Dispatchers.Main) {
+                        variableSessionManager.showToast("This app is still on cool down period!")
+                    }
+                    variableSessionManager.blockApp()
+                    return@launch
+                }
+
                 if (variableSessionManager.askLimit(packageName)) {
                     withContext(Dispatchers.Main) {
                         val intent = Intent(context, VariableSessionDialogActivity::class.java).apply {
@@ -75,9 +83,8 @@ class AppAccessibilityService : AccessibilityService() {
                         context.startActivity(intent)
                     }
                 }
-                // Cek apakah aplikasi termasuk dalam daftar aplikasi terbatas
+
                 if (variableSessionManager.isLimitedApp(packageName)) {
-                    // Jika aplikasi yang dibuka berbeda dari sebelumnya dan bukan keyboard
                     if (lastPackageName != packageName && !keyboardPackages.contains(packageName)) {
                         lastPackageName?.let { previousPackage ->
                             variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
@@ -87,7 +94,6 @@ class AppAccessibilityService : AccessibilityService() {
                         lastPackageName = packageName
                     }
                 } else {
-                    // Jika aplikasi tidak dibatasi dan bukan keyboard, hentikan timer jika sebelumnya ada yang berjalan
                     if (lastPackageName != null && !keyboardPackages.contains(packageName)) {
                         lastPackageName?.let { previousPackage ->
                             variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
@@ -95,7 +101,6 @@ class AppAccessibilityService : AccessibilityService() {
                         lastPackageName = null
                     }
                 }
-
             }
         }
     }

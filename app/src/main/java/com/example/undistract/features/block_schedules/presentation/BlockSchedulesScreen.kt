@@ -108,7 +108,7 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
             Text ("When do you want to block the selected apps?", style = MaterialTheme.typography.bodyMedium)
         }
 
-        // Pemilihan Hari (sama seperti sebelumnya)
+        // Pemilihan Hari
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
@@ -168,7 +168,6 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Start Time
             Column(
                 modifier = Modifier
                     .clickable {
@@ -191,7 +190,6 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
                 )
             }
 
-            // Panah di tengah
             Icon(
                 imageVector = Icons.AutoMirrored.Default.ArrowForward,
                 contentDescription = "Arrow",
@@ -285,7 +283,6 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
     }
 }
 
-// Komponen DaySelector tetap sama seperti sebelumnya
 @Composable
 fun DaySelector(
     day: String,

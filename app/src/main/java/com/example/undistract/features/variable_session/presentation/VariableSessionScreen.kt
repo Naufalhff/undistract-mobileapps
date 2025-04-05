@@ -42,8 +42,8 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
 
     var showDialog by remember { mutableStateOf(false) }
     var isOn by remember { mutableStateOf("Off") }
-    var hours by remember { mutableStateOf("") }
-    var minutes by remember { mutableStateOf("") }
+    var coolDownHours by remember { mutableStateOf("") }
+    var coolDownMinutes by remember { mutableStateOf("") }
 
     // Mengambil selected apps
     selectAppViewModel.updateCurrentRoute("variable_session")
@@ -66,7 +66,7 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp)),
-                    color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
+                    color = Color(0xFFFAF9F9)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -83,9 +83,9 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             OutlinedTextField(
-                                value = hours,
+                                value = coolDownHours,
                                 onValueChange = { newValue ->
-                                    hours = newValue.toIntOrNull()?.toString() ?: ""
+                                    coolDownHours = newValue.toIntOrNull()?.toString() ?: ""
                                 },
                                 label = { Text("Hours") },
                                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -93,9 +93,9 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedTextField(
-                                value = minutes,
+                                value = coolDownMinutes,
                                 onValueChange = { newValue ->
-                                    minutes = newValue.toIntOrNull()?.toString() ?: ""
+                                    coolDownMinutes = newValue.toIntOrNull()?.toString() ?: ""
                                 },
                                 label = { Text("Minutes") },
                                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -113,7 +113,7 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                             }
                             TextButton(onClick = {
                                 showDialog = false
-                                isOn = if (minutes.isNotEmpty() && minutes != "0" || hours.isNotEmpty() && hours != "0") "On" else "Off"
+                                isOn = if (coolDownMinutes.isNotEmpty() && coolDownMinutes != "0" || coolDownHours.isNotEmpty() && coolDownHours != "0") "On" else "Off"
                             }) {
                                 Text(text = "OK")
                             }
@@ -247,6 +247,9 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                                 viewModel.addVariableSession(
                                     apps = listApps,
                                     secondsLeft = 0,
+                                    coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
+                                    coolDownEndTime = null,
+                                    isOnCooldown = false,
                                     isActive = true
                                 )
                                 navController.popBackStack()
@@ -287,7 +290,7 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp)),
-                color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
+                color = Color(0xFFFAF9F9)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -375,7 +378,6 @@ fun calculate(minutes: String, hours: String): Int {
 fun GetAppInfo(context: Context, packageName: List<String>) {
     val packageManager = context.packageManager
 
-    // Coba ambil info aplikasi
     val app = try {
         packageManager.getApplicationInfo(packageName.firstOrNull()?: "", PackageManager.GET_META_DATA)
     } catch (e: PackageManager.NameNotFoundException) {
@@ -389,7 +391,6 @@ fun GetAppInfo(context: Context, packageName: List<String>) {
             icon = app.loadIcon(packageManager)
         )
 
-        // Tampilkan di UI
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -404,7 +405,6 @@ fun GetAppInfo(context: Context, packageName: List<String>) {
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             )  {
-                // Menampilkan ikon aplikasi
                 Image(
                     painter = rememberAsyncImagePainter(appInfo.icon),
                     contentDescription = appInfo.name,
@@ -413,7 +413,6 @@ fun GetAppInfo(context: Context, packageName: List<String>) {
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Nama aplikasi
                 val displayText = when {
                     packageName.isEmpty() -> "No apps selected"
                     packageName.size == 1 -> appInfo.name
