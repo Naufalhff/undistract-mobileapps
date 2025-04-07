@@ -44,7 +44,6 @@ class SelectAppsViewModel(
             val apps = getInstalledAppsUseCase(context)
             _installedApps.value = apps
 
-            // Initialize checkboxes berdasarkan data dari repository
             apps.forEach { app ->
                 selectedApps[app.packageName] = selectAppsRepository.isAppSelected(app.packageName)
             }

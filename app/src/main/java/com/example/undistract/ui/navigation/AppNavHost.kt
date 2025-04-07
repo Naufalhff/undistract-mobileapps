@@ -12,7 +12,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
@@ -24,18 +26,26 @@ import com.example.undistract.features.select_apps.presentation.SelectAppsViewMo
 import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.navigation.SelectedAppsRouteObserver
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 
 @Composable
 fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val navController = rememberNavController()
+    val database = AppDatabase.getDatabase(context)
+
+    val blockPermanentDao = database.blockPermanentDao()
 
     // Inisialisasi repository
     val selectAppsRepository = remember { SelectAppsRepository() }
+    val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
         factory = SelectAppsViewModelFactory(context, selectAppsRepository)
     )
+    val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
 
     // Observer untuk memantau perubahan rute
     SelectedAppsRouteObserver(navController, selectAppsViewModel)
@@ -88,7 +98,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
             {
                 BlockPermanentScreen(
                     navController = navController,
-                    viewModel = selectAppsViewModel
+                    selectAppsViewModel = selectAppsViewModel,
+                    blockPermanentViewModel = blockPermanentViewModel
                 )
             }
         }

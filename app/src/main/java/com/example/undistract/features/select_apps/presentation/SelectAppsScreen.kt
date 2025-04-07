@@ -44,7 +44,7 @@ fun SelectAppsScreen(
         ) {
             BackButton(
                 modifier = Modifier.size(24.dp),
-                onClick = { navController.navigate("add_restriction") }
+                onClick = { navController.popBackStack() }
             )
 
             Spacer(modifier = Modifier.width(16.dp))
