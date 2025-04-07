@@ -244,16 +244,20 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
                     onClick = {
                         coroutineScope.launch {
                             try {
-                                viewModel.addVariableSession(
-                                    apps = listApps,
-                                    secondsLeft = 0,
-                                    coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
-                                    coolDownEndTime = null,
-                                    isOnCooldown = false,
-                                    isActive = true
-                                )
-                                navController.popBackStack()
-                                Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                if (selectedApps.isEmpty()) {
+                                    Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.addVariableSession(
+                                        apps = listApps,
+                                        secondsLeft = 0,
+                                        coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
+                                        coolDownEndTime = null,
+                                        isOnCooldown = false,
+                                        isActive = true
+                                    )
+                                    navController.popBackStack()
+                                    Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                }
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                                 Log.e("SAVE_ERROR", "Failed to save variable session", e)
@@ -345,12 +349,20 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
                         TextButton(onClick = {
                             coroutineScope.launch {
                                 try {
-                                    viewModel.updateSecondsLeft(
-                                        packageName,
-                                        calculate(minutes, hours)
-                                    )
-                                    context.startActivity(launchIntent)
-                                    Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                    val minutesValue = minutes.trim()
+                                    val hoursValue = hours.trim()
+
+                                    val isMinutesEmpty = minutesValue.isEmpty() || minutesValue == "0"
+                                    val isHoursEmpty = hoursValue.isEmpty() || hoursValue == "0"
+
+                                    if (isMinutesEmpty && isHoursEmpty) {
+                                        Toast.makeText(context, "Please insert minutes and/or hours to limit the session", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.updateSecondsLeft(packageName, calculate(minutesValue, hoursValue))
+                                        context.startActivity(launchIntent)
+                                        Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                    }
+
                                 } catch (e: Exception) {
                                     navController.popBackStack()
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()

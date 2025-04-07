@@ -60,10 +60,10 @@ class VariableSessionViewModel(
         }
     }
 
-    suspend fun stillHas60Second(packageName: String): Boolean {
+    suspend fun aMinuteLeft(packageName: String): Boolean {
         val session = repository.getVariableSession(packageName).firstOrNull()
         return session?.let {
-            it.secondsLeft >= 60
+            it.secondsLeft <= 60
         } ?: false
     }
 

@@ -76,6 +76,7 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         startTime = System.currentTimeMillis()
         elapsedSeconds = 0L
 
+
         stopwatchRunnable = object : Runnable {
             override fun run() {
                 elapsedSeconds++
@@ -87,13 +88,15 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
                         viewModel.subtractSecondsLeft(packageName, 15)
 
                         // Cek apakah sisa waktu kurang dari 60 detik
-                        if (viewModel.stillHas60Second(packageName) && !hasShownToast) {
-                            withContext(Dispatchers.Main) {
-                                showToast("$packageName: Waktu tersisa kurang dari 1 menit!")
-                                hasShownToast = true
+                        val session = dao.getVariableSession(packageName).firstOrNull()
+                        session?.let{
+                            if (viewModel.aMinuteLeft(packageName) && !hasShownToast) {
+                                withContext(Dispatchers.Main) {
+                                    showToast("This session for ${session.appName} is less than 1 minute left!")
+                                    hasShownToast = true
+                                }
                             }
                         }
-
                         Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
 
                         delay(500)
@@ -108,19 +111,30 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         handler.post(stopwatchRunnable!!)
     }
 
-
-
-    fun stopTimer(packageName: String, viewModel: VariableSessionViewModel) {
+    suspend fun stopTimer(packageName: String, viewModel: VariableSessionViewModel) {
         stopwatchRunnable?.let {
-            handler.removeCallbacks(it) // Hentikan callback jika masih berjalan
-            stopwatchRunnable = null // Pastikan stopwatchRunnable tidak digunakan lagi
+            handler.removeCallbacks(it)
+            stopwatchRunnable = null
         }
 
         Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
 
-        val remainingTime = elapsedSeconds % 30
+        val remainingTime = elapsedSeconds % 15
         if (remainingTime > 0) {
-            viewModel.subtractSecondsLeft(packageName, remainingTime.toInt())
+            dao.subtractSecondsLeft(packageName, remainingTime.toInt())
+            val session = dao.getVariableSession(packageName).firstOrNull()
+            session?.let {
+                if (session.secondsLeft <= 0) {
+                    if (session.coolDownDuration != null && session.coolDownDuration > 0) {
+                        val coolDownDuration = session.coolDownDuration * 1000
+                        val coolDownEndTime = System.currentTimeMillis() + coolDownDuration
+
+                        dao.updateCoolDownEndTime(packageName, coolDownEndTime)
+                        dao.updateIsOnCoolDown(packageName, true)
+                        Log.d("CD DURATION", "OK")
+                    }
+                }
+            }
             Log.d("UsageTracker", "Mengurangi sisa waktu $remainingTime detik dari limit aplikasi.")
         }
 

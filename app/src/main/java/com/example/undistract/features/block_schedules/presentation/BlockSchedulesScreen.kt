@@ -252,22 +252,22 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
                         contentColor = Color.White
                     ),
                     onClick = {
-                        if (allNotSelected){
-                            Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
-                        } else {
-                            coroutineScope.launch {
+                        when {
+                            selectedApps.isEmpty() -> Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
+                            allNotSelected -> Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
+                            startTime == endTime -> Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
+                            else -> coroutineScope.launch {
                                 try {
-                                    val selectedDaysList = selectedDays.value.toList()
                                     viewModel.addBlockSchedules(
                                         apps = listApps,
-                                        daysOfWeek = selectedDaysList.toString(),
+                                        daysOfWeek = selectedDays.value.toList().toString(),
                                         isAllDay = isAllDay,
                                         startTime = startTime.toString(),
                                         endTime = endTime.toString(),
                                         isActive = true
                                     )
                                     navController.popBackStack()
-                                    Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                                     Log.e("SAVE_ERROR", "Failed to save block schedule", e)
