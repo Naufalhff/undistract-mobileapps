@@ -14,6 +14,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
@@ -32,6 +33,9 @@ import com.example.undistract.features.variable_session.data.VariableSessionRepo
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.navigation.SelectedAppsRouteObserver
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 
 
 @Composable
@@ -39,14 +43,18 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val navController = rememberNavController()
     val database = AppDatabase.getDatabase(context)
 
+
+
     // Dapatkan DAO dari database
     val blockSchedulesDao = database.blockSchedulesDao()
     val variableSessionDao = database.variableSessionDao()
+    val blockPermanentDao = database.blockPermanentDao()
 
     // Inisialisasi repository & dao
     val selectAppsRepository = remember { SelectAppsRepository() }
     val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
+    val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
@@ -54,6 +62,7 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     )
     val blockSchedulesViewModel = BlockSchedulesViewModel(blockSchedulesRepository)
     val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+    val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
 
     // Observer untuk memantau perubahan rute
     SelectedAppsRouteObserver(navController, selectAppsViewModel)
@@ -108,7 +117,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
             {
                 BlockPermanentScreen(
                     navController = navController,
-                    viewModel = selectAppsViewModel
+                    selectAppsViewModel = selectAppsViewModel,
+                    blockPermanentViewModel = blockPermanentViewModel
                 )
             }
             composable("block_schedules")

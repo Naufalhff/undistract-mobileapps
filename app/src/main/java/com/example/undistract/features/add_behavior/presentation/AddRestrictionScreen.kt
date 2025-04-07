@@ -32,13 +32,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.example.undistract.R
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.ui.components.AppSelector
 import com.example.undistract.ui.components.BackButton
-import com.example.undistract.ui.components.RestrictionNameInput
 import com.example.undistract.ui.navigation.BottomNavItem
 
 @Composable
@@ -153,8 +151,6 @@ fun AddRestrictionScreen(
                     )
                 }
             }
-
-            RestrictionNameInput()
         }
     }
 }
