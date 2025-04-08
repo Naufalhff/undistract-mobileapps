@@ -97,6 +97,13 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
             composable(BottomNavItem.MyUsage.route) {
                 MyUsageScreen(navController = navController, context = context)
             }
+            composable(BottomNavItem.UsageLimit.route) {
+                UsageLimitScreen(
+                    navController = navController,
+                    context = context,
+                    viewModel = selectAppsViewModel
+                )
+            }
             composable(BottomNavItem.ParentalControl.route) {
                 ParentalControlScreen(navController = navController, context = context)
             }

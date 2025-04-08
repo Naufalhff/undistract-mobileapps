@@ -36,10 +36,14 @@ class UsageLimitViewModel(
         viewModelScope.launch {
             repository.getAll().collect { limits ->
                 Log.d(TAG, "Received ${limits.size} limits from database")
-                _dailyLimits.value = limits
-                // Trigger usage stats update whenever limits change
-                if (usageStatsManager != null) {
-                    updateAppUsageProgress(true)
+                if (limits.isNotEmpty()) {
+                    _dailyLimits.value = limits
+                    if (usageStatsManager != null) {
+                        updateAppUsageProgress(true)
+                    }
+                } else {
+                    // Handle empty state
+                    _isLoading.value = false
                 }
             }
         }
