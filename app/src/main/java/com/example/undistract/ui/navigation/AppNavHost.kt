@@ -36,6 +36,11 @@ import com.example.undistract.navigation.SelectedAppsRouteObserver
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
+import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModelFactory
 
 
 @Composable
@@ -73,7 +78,10 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
         "select_apps",
         "block_permanent",
         "block_schedules",
-        "variable_session"
+        "variable_session",
+        "set_daily_limit",
+        "editUsageLimit"
+
     )
 
     Scaffold(
@@ -93,7 +101,11 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 MyUsageScreen(navController = navController, context = context)
             }
             composable(BottomNavItem.UsageLimit.route) {
-                UsageLimitScreen(navController = navController, context = context)
+                UsageLimitScreen(
+                    navController = navController,
+                    context = context,
+                    viewModel = selectAppsViewModel
+                )
             }
             composable(BottomNavItem.ParentalControl.route) {
                 ParentalControlScreen(navController = navController, context = context)
@@ -135,6 +147,29 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     navController = navController,
                     viewModel = variableSessionViewModel,
                     selectAppViewModel = selectAppsViewModel
+                )
+            }
+
+            composable("set_daily_limit") {
+                val usageLimitViewModel: UsageLimitViewModel = viewModel(
+                    factory = UsageLimitViewModelFactory(
+                        SetaDailyLimitRepositoryImpl(
+                            AppDatabase.getDatabase(context).setaDailyLimitDao()
+                        )
+                    )
+                )
+                SetDailyUsageLimitScreen(
+                    navController = navController,
+                    viewModel = selectAppsViewModel,
+                    usageLimitViewModel = usageLimitViewModel
+                )
+            }
+
+            composable("editUsageLimit") {
+                EditUsageLimitScreen(
+                    context = context,
+                    navController = navController,
+                    viewModel = selectAppsViewModel,
                 )
             }
         }
