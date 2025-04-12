@@ -83,11 +83,21 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                     }
                 } ?: ContextCompat.getDrawable(context, R.drawable.app_logo)!!
 
-                // Get the progress from the ViewModel
-                val progress = appUsageProgress[limit.packageName] ?: 0f
+                // Get the progress from the ViewModel - same as UsageLimitScreen
+                val progress = if (limit.isActive) {
+                    appUsageProgress[limit.packageName] ?: 0f
+                } else {
+                    0f // Set progress to 0 for inactive apps
+                }
 
-                // Calculate used time in minutes
-                val usedMinutes = (progress * limit.timeLimitMinutes).toInt()
+                // Calculate used time in minutes - same as UsageLimitScreen
+                val usedMinutes = if (limit.isActive) {
+                    (progress * limit.timeLimitMinutes).toInt()
+                } else {
+                    0
+                }
+                
+                // Format time limit - same as UsageLimitScreen
                 val timeLimit = "${limit.timeLimitMinutes / 60}h ${limit.timeLimitMinutes % 60}m"
                 val usageText = "$timeLimit (${usedMinutes}m used)"
 
@@ -98,13 +108,20 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                         packageName = limit.packageName,
                         icon = iconDrawable,
                         timeLimit = usageText,
-                        progress = progress
+                        progress = progress,
+                        isBlocked = false // Ensure isBlocked matches isActive
                     )
                 )
             } catch (e: Exception) {
                 Log.e("EditUsageLimitScreen", "Error creating AppLimitInfo for ${limit.appName}", e)
             }
         }
+    }
+
+    // Initialize usage tracking
+    LaunchedEffect(Unit) {
+        usageLimitViewModel.initUsageTracking(context)
+        usageLimitViewModel.refreshUsageStats()
     }
 
     Scaffold(
@@ -370,7 +387,8 @@ fun EditAppLimitItem(
             },
             colors = CheckboxDefaults.colors(
                 checkedColor = Purple40,
-                uncheckedColor = Color.Gray
+                uncheckedColor = Color.Gray,
+                checkmarkColor = Color.White
             )
         )
 
