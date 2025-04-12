@@ -4,10 +4,13 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface VariableSessionDao {
+    @Query("SELECT * FROM variable_session_table")
+    fun getAllVariableSession(): Flow<List<VariableSessionEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVariableSession(data: VariableSessionEntity)
 
@@ -20,8 +23,8 @@ interface VariableSessionDao {
     @Query("UPDATE variable_session_table SET secondsLeft = :secondsLeft WHERE packageName = :packageName")
     suspend fun updateSecondsLeft(packageName: String, secondsLeft: Int)
 
-    @Query("UPDATE variable_session_table SET secondsLeft = secondsLeft - :secondsLeft WHERE packageName = :packageName")
-    suspend fun subtractSecondsLeft(packageName: String, secondsLeft: Int)
+    @Query("UPDATE variable_session_table SET secondsLeft = secondsLeft - :seconds WHERE packageName = :packageName")
+    suspend fun subtractSecondsLeft(packageName: String, seconds: Int)
 
     @Query("UPDATE variable_session_table SET isActive = :isActive WHERE packageName = :packageName")
     suspend fun updateIsActive(packageName: String, isActive: Boolean)

@@ -32,6 +32,7 @@ import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.core.content.ContextCompat
@@ -49,6 +50,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.example.undistract.features.usage_limit.domain.AppLimitInfo
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,8 +62,11 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
-            SetaDailyLimitRepositoryImpl(
+            repository = SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
+            ),
+            blockSchedulesRepository = BlockSchedulesRepository(
+                AppDatabase.getDatabase(context).blockSchedulesDao()
             )
         )
     )
@@ -138,6 +144,9 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
     }
+
+    // Ambil data aplikasi yang diblokir
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
 
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->
@@ -337,6 +346,20 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                 }
                             )
                         }
+
+                        // Tampilkan aplikasi yang diblokir
+                        if (blockedApps.isNotEmpty()) {
+                            BlockedAppsSection(
+                                title = "BLOCKED APPS",
+                                apps = blockedApps,
+                                context = context,
+                                viewModel = usageLimitViewModel,
+                                onAppToggleChange = { index, isChecked ->
+                                    // Update status toggle di ViewModel
+                                    usageLimitViewModel.toggleBlockSchedule(blockedApps[index].id, isChecked)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -469,6 +492,108 @@ fun AppLimitItem(
 
         Switch(
             checked = app.isBlocked,
+            onCheckedChange = { isChecked ->
+                onToggleChange(isChecked)
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Purple40,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = Color.LightGray
+            )
+        )
+    }
+}
+
+@Composable
+fun BlockedAppsSection(
+    title: String,
+    apps: List<BlockSchedulesEntity>,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onAppToggleChange: (Int, Boolean) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$title (${apps.size})",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand",
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+        }
+
+        if (expanded) {
+            apps.forEachIndexed { index, app ->
+                BlockedAppItem(
+                    app = app,
+                    context = context,
+                    viewModel = viewModel,
+                    onToggleChange = { isChecked ->
+                        onAppToggleChange(index, isChecked)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BlockedAppItem(
+    app: BlockSchedulesEntity,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onToggleChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(viewModel.getAppIcon(context, app.packageName)),
+            contentDescription = app.appName,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp)
+        ) {
+            Text(
+                text = app.appName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = "Schedule: ${app.daysOfWeek} ${app.startTime} - ${app.endTime}",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+
+        Switch(
+            checked = app.isActive,
             onCheckedChange = { isChecked ->
                 onToggleChange(isChecked)
             },

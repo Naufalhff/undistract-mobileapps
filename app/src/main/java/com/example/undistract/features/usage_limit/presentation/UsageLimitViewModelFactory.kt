@@ -7,11 +7,12 @@ import com.example.undistract.features.block_schedules.data.BlockSchedulesReposi
 
 class UsageLimitViewModelFactory(
     private val repository: SetaDailyLimitRepository,
+    private val blockSchedulesRepository: BlockSchedulesRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(UsageLimitViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return UsageLimitViewModel(repository) as T
+            return UsageLimitViewModel(repository, blockSchedulesRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

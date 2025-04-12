@@ -153,9 +153,10 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
             composable("set_daily_limit") {
                 val usageLimitViewModel: UsageLimitViewModel = viewModel(
                     factory = UsageLimitViewModelFactory(
-                        SetaDailyLimitRepositoryImpl(
+                        repository = SetaDailyLimitRepositoryImpl(
                             AppDatabase.getDatabase(context).setaDailyLimitDao()
-                        )
+                        ),
+                        blockSchedulesRepository = blockSchedulesRepository // Tambahkan ini
                     )
                 )
                 SetDailyUsageLimitScreen(

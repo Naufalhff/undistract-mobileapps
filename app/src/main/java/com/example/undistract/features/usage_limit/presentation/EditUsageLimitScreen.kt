@@ -36,6 +36,7 @@ import android.util.Log
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.os.Parcelable
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.usage_limit.domain.AppLimitInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,8 +47,11 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
 
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
-            SetaDailyLimitRepositoryImpl(
+            repository = SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
+            ),
+            blockSchedulesRepository = BlockSchedulesRepository(
+                AppDatabase.getDatabase(context).blockSchedulesDao()
             )
         )
     )

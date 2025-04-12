@@ -1,14 +1,20 @@
 package com.example.undistract.features.usage_limit.presentation
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import com.example.undistract.features.usage_stats.UsageStatsManager
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,9 +22,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 
 class UsageLimitViewModel(
-    private val repository: SetaDailyLimitRepository
+    private val repository: SetaDailyLimitRepository,
+    private val blockSchedulesRepository: BlockSchedulesRepository
 ) : ViewModel() {
     private val TAG = "UsageLimitViewModel"
 
@@ -35,6 +43,9 @@ class UsageLimitViewModel(
 
     private var usageStatsManager: UsageStatsManager? = null
     private var trackingJob: kotlinx.coroutines.Job? = null
+
+    // Tambahkan Flow untuk blockedApps
+    val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules()
 
     init {
         viewModelScope.launch {
@@ -246,5 +257,21 @@ class UsageLimitViewModel(
                 Log.e(TAG, "Error deleting daily limit", e)
             }
         }
+    }
+
+    // Fungsi untuk mengambil icon aplikasi
+    fun getAppIcon(context: Context, packageName: String): Drawable? {
+        return try {
+            context.packageManager.getApplicationIcon(packageName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            ContextCompat.getDrawable(context, R.drawable.app_logo) // Fallback icon
+        }
+    }
+
+    // Fungsi untuk mengupdate status toggle
+    fun toggleBlockSchedule(id: Int, isActive: Boolean) {
+//        viewModelScope.launch {
+//            blockSchedulesRepository.updateBlockScheduleActiveState(id, isActive)
+//        }
     }
 }
