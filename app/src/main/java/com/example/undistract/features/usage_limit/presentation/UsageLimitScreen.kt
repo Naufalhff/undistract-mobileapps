@@ -6,11 +6,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,18 +30,32 @@ import androidx.navigation.NavHostController
 import com.example.undistract.R
 import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.core.content.ContextCompat
 import coil.compose.rememberAsyncImagePainter
+import kotlinx.coroutines.delay
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
+import com.example.undistract.features.usage_stats.UsageStatsManager
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import com.example.undistract.features.usage_limit.domain.AppLimitInfo
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+    val sharedViewModel: SharedViewModel = viewModel()
+
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
@@ -54,7 +70,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
         usageLimitViewModel.initUsageTracking(context)
     }
 
-    // Ambil data dailyLimits dari ViewModel
+    // Akses dailyLimits dari UsageLimitViewModel
     val dailyLimits by usageLimitViewModel.dailyLimits.collectAsState()
     val appUsageProgress by usageLimitViewModel.appUsageProgress.collectAsState()
 
@@ -121,6 +137,12 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Pastikan untuk memanggil refreshUsageStats saat screen menjadi aktif
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
+    }
+
+    // Navigasi ke edit screen dengan membawa data
+    val navigateToEdit = { app: AppLimitInfo ->
+        sharedViewModel.setAppLimitInfo(app)
+        navController.navigate("editUsageLimit")
     }
 
     Scaffold(
@@ -223,7 +245,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                         verticalArrangement = Arrangement.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.app_logo),
+                            painter = painterResource(id = R.drawable.emptystate),
                             contentDescription = "Empty Usage Limit",
                             modifier = Modifier
                                 .size(200.dp)
@@ -287,6 +309,8 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
 
                             if (limitedUsageApps.isNotEmpty()) {
                                 TextButton(onClick = {
+                                    // Set data ke SharedViewModel
+                                    sharedViewModel.setAppLimitInfo(limitedUsageApps[0]) // Contoh: Mengirim aplikasi pertama
                                     navController.navigate("editUsageLimit")
                                 }) {
                                     Text(
@@ -307,6 +331,9 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                 onAppToggleChange = { index, isActive ->
                                     val app = limitedUsageApps[index]
                                     usageLimitViewModel.toggleAppActiveState(app.id, isActive)
+                                },
+                                onEditClick = { index ->
+                                    navigateToEdit(limitedUsageApps[index])
                                 }
                             )
                         }
@@ -324,7 +351,8 @@ fun LimitSection(
     apps: List<AppLimitInfo>,
     showTimeIcon: Boolean = false,
     showProgress: Boolean = false,
-    onAppToggleChange: (Int, Boolean) -> Unit
+    onAppToggleChange: (Int, Boolean) -> Unit,
+    onEditClick: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
 
@@ -358,7 +386,8 @@ fun LimitSection(
                     showProgress = showProgress,
                     onToggleChange = { isChecked ->
                         onAppToggleChange(index, isChecked)
-                    }
+                    },
+                    onEditClick = { onEditClick(index) }
                 )
             }
         }
@@ -370,7 +399,8 @@ fun AppLimitItem(
     app: AppLimitInfo,
     showTimeIcon: Boolean = false,
     showProgress: Boolean = false,
-    onToggleChange: (Boolean) -> Unit
+    onToggleChange: (Boolean) -> Unit,
+    onEditClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -428,13 +458,14 @@ fun AppLimitItem(
                     .padding(end = 8.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.app_logo),
+                    imageVector = Icons.Default.CalendarToday,
                     contentDescription = "Set Time",
                     tint = Purple40,
                     modifier = Modifier.size(20.dp)
                 )
             }
         }
+
 
         Switch(
             checked = app.isBlocked,
@@ -450,3 +481,4 @@ fun AppLimitItem(
         )
     }
 }
+

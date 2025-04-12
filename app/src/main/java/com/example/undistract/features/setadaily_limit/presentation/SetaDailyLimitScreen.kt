@@ -38,6 +38,7 @@ import com.example.undistract.ui.navigation.BottomNavItem
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
+import android.content.Context
 
 
 @OptIn(ExperimentalMaterial3Api::class)

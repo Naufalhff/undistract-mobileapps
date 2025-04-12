@@ -91,5 +91,8 @@ dependencies {
     implementation ("androidx.compose.runtime:runtime:1.6.3")
     implementation ("androidx.activity:activity-compose:1.8.2")
 
+    //icon
+    implementation ("androidx.compose.material:material-icons-extended:1.5.4")
+
     implementation(libs.accompanist.navigation.animation)
 }

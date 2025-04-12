@@ -35,15 +35,15 @@ import coil.compose.rememberAsyncImagePainter
 import android.util.Log
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.os.Parcelable
+import com.example.undistract.features.usage_limit.domain.AppLimitInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
-    // Create repository implementation instead of using interface directly
-    val database = AppDatabase.getDatabase(context)
-    val repository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
+    val sharedViewModel: SharedViewModel = viewModel()
+    val appLimitInfo by sharedViewModel.appLimitInfo.collectAsState()
 
-    // Get the UsageLimitViewModel to access usage stats
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
             SetaDailyLimitRepositoryImpl(
@@ -52,20 +52,14 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
         )
     )
 
-    // Initialize usage tracking
-    LaunchedEffect(Unit) {
-        usageLimitViewModel.initUsageTracking(context)
-        usageLimitViewModel.refreshUsageStats()
-    }
+    // Akses dailyLimits dari UsageLimitViewModel
+    val dailyLimits by usageLimitViewModel.dailyLimits.collectAsState()
+    val appUsageProgress by usageLimitViewModel.appUsageProgress.collectAsState()
 
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps = remember { mutableStateListOf<AppLimitInfo>() }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Ambil data dailyLimits dari ViewModel
-    val dailyLimits by viewModel.dailyLimits.collectAsState()
-    val appUsageProgress by usageLimitViewModel.appUsageProgress.collectAsState()
 
     // Update limitedUsageApps ketika dailyLimits berubah
     LaunchedEffect(dailyLimits, appUsageProgress) {
@@ -180,10 +174,10 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                             if (selectedApps.isNotEmpty()) {
                                 try {
                                     selectedApps.forEach { app ->
-                                        repository.deleteById(app.id)
+                                        usageLimitViewModel.deleteDailyLimitById(app.id)
                                     }
                                     snackbarHostState.showSnackbar("Removed ${selectedApps.size} limits")
-                                    viewModel.refreshDailyLimits()
+                                    usageLimitViewModel.refreshLimits()
                                 } catch (e: Exception) {
                                     Log.e("EditUsageLimitScreen", "Error deleting limits", e)
                                     snackbarHostState.showSnackbar("Failed to remove: ${e.message}")
@@ -231,6 +225,8 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                 }
             }
 
+
+
             if (limitedUsageApps.isNotEmpty()) {
                 EditLimitSection(
                     title = "LIMITED DAILY USAGE",
@@ -250,7 +246,7 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.app_logo),
+                        painter = painterResource(id = R.drawable.emptystate),
                         contentDescription = "No limits set",
                         modifier = Modifier
                             .size(200.dp)
@@ -428,7 +424,7 @@ fun EditAppLimitItem(
                     .padding(end = 8.dp)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.app_logo),
+                    imageVector = Icons.Default.CalendarToday,
                     contentDescription = "Set Time",
                     tint = Purple40,
                     modifier = Modifier.size(20.dp)
@@ -437,17 +433,6 @@ fun EditAppLimitItem(
         }
     }
 }
-
-// AppLimitInfo data class
-data class AppLimitInfo(
-    val id: Int = 0,
-    val appName: String,
-    val packageName: String = "",
-    val icon: Drawable,
-    val isBlocked: Boolean = false,
-    val timeLimit: String? = null,
-    val progress: Float? = null
-)
 
 fun uriToDrawable(context: Context, uriString: String): Drawable? {
     return try {

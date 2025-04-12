@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +21,8 @@ class UsageLimitViewModel(
     private val repository: SetaDailyLimitRepository
 ) : ViewModel() {
     private val TAG = "UsageLimitViewModel"
+
+    private val appContext: Context? = null
 
     private val _dailyLimits = MutableStateFlow<List<SetaDailyLimitEntity>>(emptyList())
     val dailyLimits: StateFlow<List<SetaDailyLimitEntity>> = _dailyLimits.asStateFlow()
@@ -35,9 +39,9 @@ class UsageLimitViewModel(
     init {
         viewModelScope.launch {
             repository.getAll().collect { limits ->
-                Log.d(TAG, "Received ${limits.size} limits from database")
+                _dailyLimits.value = limits
                 if (limits.isNotEmpty()) {
-                    _dailyLimits.value = limits
+                    Log.d(TAG, "Received ${limits.size} limits from database")
                     if (usageStatsManager != null) {
                         updateAppUsageProgress(true)
                     }
@@ -189,6 +193,57 @@ class UsageLimitViewModel(
                 refreshUsageStats()
             } catch (e: Exception) {
                 Log.e("UsageLimitViewModel", "Error deleting usage limit", e)
+            }
+        }
+    }
+    // Function moved from SelectAppsViewModel
+    fun refreshDailyLimits() {
+        viewModelScope.launch {
+            try {
+                if (appContext != null) {
+                    val database = AppDatabase.getDatabase(appContext)
+                    val tempRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
+                    tempRepository.getAll().collect { limits ->
+                        _dailyLimits.value = limits
+                        // Break after first collection to avoid continuous collection
+                        return@collect
+                    }
+                } else {
+                    // Use the injected repository if appContext is null
+                    repository.getAll().collect { limits ->
+                        _dailyLimits.value = limits
+                        // Break after first collection to avoid continuous collection
+                        return@collect
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing daily limits", e)
+            }
+        }
+    }
+
+    fun updateDailyLimit(id: Int, newLimitMinutes: Int) {
+        viewModelScope.launch {
+            try {
+                val entity = repository.getById(id)
+                entity?.let {
+                    val updatedEntity = it.copy(timeLimitMinutes = newLimitMinutes)
+                    repository.update(updatedEntity)
+                    refreshUsageStats()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating daily limit", e)
+            }
+        }
+    }
+
+    fun deleteDailyLimitById(id: Int) {
+        viewModelScope.launch {
+            try {
+                repository.deleteById(id)
+                refreshLimits()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting daily limit", e)
             }
         }
     }

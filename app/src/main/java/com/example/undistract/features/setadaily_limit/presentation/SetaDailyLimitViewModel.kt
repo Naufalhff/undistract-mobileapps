@@ -1,11 +1,14 @@
 package com.example.undistract.features.setadaily_limit.presentation
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +18,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SetaDailyLimitViewModel(
-    private val repository: SetaDailyLimitRepository
+    private val repository: SetaDailyLimitRepository,
+    private val appContext: Context? = null
 ) : ViewModel() {
     private val TAG = "SetaDailyLimitViewModel"
 
@@ -27,14 +31,14 @@ class SetaDailyLimitViewModel(
     private val _saveResult = MutableStateFlow<SaveResult>(SaveResult.Idle)
     val saveResult: StateFlow<SaveResult> = _saveResult.asStateFlow()
 
-    private val _allLimits = MutableStateFlow<List<SetaDailyLimitEntity>>(emptyList())
-    val allLimits: StateFlow<List<SetaDailyLimitEntity>> = _allLimits.asStateFlow()
+    private val _dailyLimits = MutableStateFlow<List<SetaDailyLimitEntity>>(emptyList())
+    val dailyLimits: StateFlow<List<SetaDailyLimitEntity>> = _dailyLimits.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.getAll().collect { limits ->
                 Log.d(TAG, "Received ${limits.size} limits from database")
-                _allLimits.value = limits
+                _dailyLimits.value = limits
             }
         }
     }
@@ -88,6 +92,9 @@ class SetaDailyLimitViewModel(
             selectedApps[app.packageName] == true
         }
     }
+
+
+
     sealed class SaveResult {
         object Idle : SaveResult()
         object Loading : SaveResult()
