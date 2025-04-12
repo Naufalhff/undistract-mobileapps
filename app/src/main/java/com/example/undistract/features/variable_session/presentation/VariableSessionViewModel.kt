@@ -1,7 +1,9 @@
 package com.example.undistract.features.variable_session.presentation
 
 import android.util.Log
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
@@ -15,6 +17,8 @@ class VariableSessionViewModel(
 
     private val _showDialog = MutableStateFlow(false)
     val showDialog: StateFlow<Boolean> get() = _showDialog
+
+    val variableSession: List<VariableSessionEntity> = repository.getAllVariableSession()
 
     suspend fun getVariableSession(packageName: String): List<VariableSessionEntity> {
         return repository.getVariableSession(packageName)

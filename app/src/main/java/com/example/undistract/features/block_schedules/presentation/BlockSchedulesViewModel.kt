@@ -1,13 +1,18 @@
 package com.example.undistract.features.block_schedules.presentation
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import kotlinx.coroutines.launch
 
 class BlockSchedulesViewModel(
     private val repository: BlockSchedulesRepository
 ) : ViewModel() {
+
+    val blockedSchedules: List<BlockSchedulesEntity> = repository.getAllBlockSchedules()
 
     fun addBlockSchedules(
         apps: List<Pair<String, String>>,

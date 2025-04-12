@@ -4,12 +4,14 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 
 @Dao
 interface VariableSessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVariableSession(data: VariableSessionEntity)
+
+    @Query("SELECT * FROM variable_session_table")
+    fun getAllVariableSession(): List<VariableSessionEntity>
 
     @Query("SELECT * FROM variable_session_table WHERE packageName = :packageName")
     suspend fun getVariableSession(packageName: String): List<VariableSessionEntity>

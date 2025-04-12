@@ -3,10 +3,13 @@ package com.example.undistract.features.variable_session.data
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import kotlinx.coroutines.flow.Flow
 
 class VariableSessionRepository(
     private val dao: VariableSessionDao
 )  {
+
+    fun getAllVariableSession(): List<VariableSessionEntity> = dao.getAllVariableSession()
 
     suspend fun getVariableSession(packageName: String): List<VariableSessionEntity> {
         return dao.getVariableSession(packageName)
