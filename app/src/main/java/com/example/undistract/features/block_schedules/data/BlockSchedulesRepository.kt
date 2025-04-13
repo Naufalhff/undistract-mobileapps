@@ -31,4 +31,8 @@ class BlockSchedulesRepository(
             dao.insertBlockSchedules(schedule)
         }
     }
+
+    suspend fun deleteBlockSchedules(id: Int) {
+        dao.deleteBlockSchedules(id)
+    }
 }

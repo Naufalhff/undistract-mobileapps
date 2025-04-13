@@ -68,7 +68,7 @@ fun SetDailyUsageLimitScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var selectedHours by remember { mutableStateOf("0") }
-    var selectedMinutes by remember { mutableStateOf("45") }
+    var selectedMinutes by remember { mutableStateOf("5") }
     var limitName by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     val limitOptions = remember { listOf("Set a Daily Usage Limit", "Block Permanently", "Block on a Schedule") }

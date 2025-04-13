@@ -23,10 +23,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 
 class UsageLimitViewModel(
     private val repository: SetaDailyLimitRepository,
-    private val blockSchedulesRepository: BlockSchedulesRepository
+    private val blockSchedulesRepository: BlockSchedulesRepository,
+    private val variableSessionRepository: VariableSessionRepository,
+    private val blockPermanentRepository: BlockPermanentRepository
 ) : ViewModel() {
     private val TAG = "UsageLimitViewModel"
 
@@ -47,6 +53,12 @@ class UsageLimitViewModel(
     // Tambahkan Flow untuk blockedApps
     val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules()
 
+    private val _variableSessions = MutableStateFlow<List<VariableSessionEntity>>(emptyList())
+    val variableSessions: StateFlow<List<VariableSessionEntity>> get() = _variableSessions
+
+    private val _blockPermanentApps = MutableStateFlow<List<BlockPermanentEntity>>(emptyList())
+    val blockPermanentApps: StateFlow<List<BlockPermanentEntity>> get() = _blockPermanentApps
+
     init {
         viewModelScope.launch {
             repository.getAll().collect { limits ->
@@ -60,6 +72,18 @@ class UsageLimitViewModel(
                     // Handle empty state
                     _isLoading.value = false
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            variableSessionRepository.getAllVariableSession().collect { sessions ->
+                _variableSessions.value = sessions
+            }
+        }
+
+        viewModelScope.launch {
+            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
+                _blockPermanentApps.value = apps
             }
         }
     }
@@ -250,12 +274,8 @@ class UsageLimitViewModel(
 
     fun deleteDailyLimitById(id: Int) {
         viewModelScope.launch {
-            try {
-                repository.deleteById(id)
-                refreshLimits()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error deleting daily limit", e)
-            }
+            repository.deleteDailyLimitById(id)
+            refreshLimits()
         }
     }
 
@@ -273,5 +293,76 @@ class UsageLimitViewModel(
 //        viewModelScope.launch {
 //            blockSchedulesRepository.updateBlockScheduleActiveState(id, isActive)
 //        }
+    }
+
+    fun toggleVariableSessionActiveState(packageName: String, isActive: Boolean) {
+        viewModelScope.launch {
+            variableSessionRepository.updateIsActive(packageName, isActive)
+        }
+    }
+
+    fun updateVariableSessionUsage(packageName: String, secondsUsed: Int) {
+        viewModelScope.launch {
+            variableSessionRepository.subtractSecondsLeft(packageName, secondsUsed)
+        }
+    }
+
+    fun toggleBlockPermanentActiveState(id: Int, isActive: Boolean) {
+        viewModelScope.launch {
+            blockPermanentRepository.updateIsActive(id, isActive)
+
+        }
+    }
+
+    fun fetchBlockPermanent(packageName: String) {
+        viewModelScope.launch {
+            val blockPermanentApps = blockPermanentRepository.getBlockPermanent(packageName)
+            // Lakukan sesuatu dengan blockPermanentApps
+        }
+    }
+
+    fun deleteBlockScheduleById(id: Int) {
+        viewModelScope.launch {
+            blockSchedulesRepository.deleteBlockSchedules(id)
+            refreshBlockedApps()
+        }
+    }
+
+    fun deleteVariableSessionById(id: String) {
+        viewModelScope.launch {
+            variableSessionRepository.deleteVariableSessionById(id)
+            refreshVariableSessions()
+        }
+    }
+
+    fun deleteBlockPermanentById(id: Int) {
+        viewModelScope.launch {
+            blockPermanentRepository.deleteBlockPermanentById(id)
+            refreshBlockPermanentApps()
+        }
+    }
+
+    fun refreshBlockedApps() {
+        viewModelScope.launch {
+            blockSchedulesRepository.getAllBlockSchedules().collect { apps ->
+                // Update state if needed
+            }
+        }
+    }
+
+    fun refreshVariableSessions() {
+        viewModelScope.launch {
+            variableSessionRepository.getAllVariableSession().collect { sessions ->
+                // Update state if needed
+            }
+        }
+    }
+
+    fun refreshBlockPermanentApps() {
+        viewModelScope.launch {
+            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
+                // Update state if needed
+            }
+        }
     }
 }

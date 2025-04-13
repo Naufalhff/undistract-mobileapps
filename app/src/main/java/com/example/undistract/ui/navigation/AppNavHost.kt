@@ -156,7 +156,9 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                         repository = SetaDailyLimitRepositoryImpl(
                             AppDatabase.getDatabase(context).setaDailyLimitDao()
                         ),
-                        blockSchedulesRepository = blockSchedulesRepository // Tambahkan ini
+                        blockSchedulesRepository = blockSchedulesRepository, // Tambahkan ini
+                        variableSessionRepository = variableSessionRepository,
+                        blockPermanentRepository = blockPermanentRepository
                     )
                 )
                 SetDailyUsageLimitScreen(

@@ -16,4 +16,7 @@ interface BlockSchedulesDao {
 
     @Query("SELECT * FROM block_schedules_table WHERE packageName = :packageName")
     suspend fun getBlockSchedules(packageName: String): List<BlockSchedulesEntity>
+
+    @Query("DELETE FROM block_schedules_table WHERE id = :id")
+    suspend fun deleteBlockSchedules(id: Int)
 }

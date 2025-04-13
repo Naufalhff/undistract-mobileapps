@@ -69,4 +69,8 @@ class VariableSessionRepository(
     suspend fun insertVariableSession(data: VariableSessionEntity) {
         dao.insertVariableSession(data)
     }
+
+    suspend fun deleteVariableSessionById(id: String) {
+        dao.deleteVariableSession(id)
+    }
 }
