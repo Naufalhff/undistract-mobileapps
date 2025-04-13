@@ -2,6 +2,7 @@ package com.example.undistract.features.block_schedules.domain
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
 import com.example.undistract.core.AppAccessibilityService
@@ -25,15 +26,13 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
 
     // Fungsi untuk memeriksa apakah aplikasi diblokir dan dalam rentang waktu tertentu
     suspend fun shouldBlockApp(packageName: String, currentTime: LocalTime): Boolean {
-        // Ambil semua jadwal blokir untuk aplikasi tersebut
         val blockSchedules = dao.getBlockSchedules(packageName)
         Log.d("DATABASE_TEST", "blockschedules: $blockSchedules")
 
-        // Ambil hari saat ini dalam bentuk indeks (0 = Senin, 6 = Minggu)
-        val todayIndex = LocalDate.now().dayOfWeek.value % 7 // Ubah agar 0 = Senin, 6 = Minggu
+        // Ambil hari saat ini dalam bentuk indeks
+        val todayIndex = LocalDate.now().dayOfWeek.value % 7
 
         return blockSchedules.any { blockSchedule ->
-            // Konversi dari JSON String ke List<Boolean>
             val listType = object : TypeToken<List<Boolean>>() {}.type
             val blockedDays: List<Boolean> = Gson().fromJson(blockSchedule.daysOfWeek, listType)
 
@@ -48,7 +47,6 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
                 return@any false // Tidak diblokir hari ini
             }
 
-            // Parse waktu mulai dan berakhir
             val startTime = LocalTime.parse(blockSchedule.startTime)
             val endTime = LocalTime.parse(blockSchedule.endTime)
 
@@ -61,8 +59,27 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
     private fun isWithinBlockedTime(currentTime: LocalTime, startTime: LocalTime, endTime: LocalTime): Boolean {
         return if (startTime.isBefore(endTime)) {
             currentTime.isAfter(startTime) && currentTime.isBefore(endTime)
-        } else { // Kasus rentang waktu melewati tengah malam
+        } else {
             currentTime.isAfter(startTime) || currentTime.isBefore(endTime)
         }
     }
+
+    fun getAppInfoFromPackageNames(context: Context, packageNames: List<String>): List<Pair<String, String>> {
+        val packageManager: PackageManager = context.packageManager
+        val appInfoList = mutableListOf<Pair<String, String>>()
+
+        for (packageName in packageNames) {
+            try {
+                val appName = packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                ).toString()
+                appInfoList.add(Pair(appName, packageName))
+            } catch (e: PackageManager.NameNotFoundException) {
+                appInfoList.add(Pair("Unknown", packageName))
+            }
+        }
+
+        return appInfoList
+    }
+
 }

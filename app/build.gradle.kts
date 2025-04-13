@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -56,6 +57,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.firebase.auth.ktx)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.room.common)
+    implementation(libs.androidx.room.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -80,11 +83,6 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.8.9")
 
-    // Lifecycle components
-    implementation ("androidx.lifecycle:lifecycle-service:2.7.0")
-    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-
     // SavedState
     implementation ("androidx.savedstate:savedstate-ktx:1.2.1")
 
@@ -93,4 +91,8 @@ dependencies {
     implementation ("androidx.compose.runtime:runtime:1.6.3")
     implementation ("androidx.activity:activity-compose:1.8.2")
 
+    //icon
+    implementation ("androidx.compose.material:material-icons-extended:1.5.4")
+
+    implementation(libs.accompanist.navigation.animation)
 }

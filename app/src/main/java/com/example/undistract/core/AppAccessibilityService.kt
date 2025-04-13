@@ -8,18 +8,16 @@ import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
-import androidx.compose.runtime.Composable
 import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
-import com.google.firebase.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,66 +29,104 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionManager: VariableSessionManager
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
+    private lateinit var blockPermanentRepository: BlockPermanentRepository
+    private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
-    private var lastStartTime: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val context = this
+
+        // Ignore ketika user mengetik
+        val keyboardPackages = listOf(
+            "com.google.android.inputmethod.latin",
+            "com.microsoft.swiftkey",
+            "com.samsung.android.honeyboard"
+        )
+
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: "Nama Package gagal diambil"
             val currentTime = LocalTime.now()
-            val currentTimeMillis = System.currentTimeMillis()
 
             Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
 
-            // Block on Schedules
             serviceScope.launch {
+
+                // BLOCK ON SCHEDULES
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Aplikasi ini diblokir!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "This app is blocked!", Toast.LENGTH_SHORT).show()
                     }
                     Log.d("BlockApp", "Menutup aplikasi: $packageName")
-                    blockScheduleManager.blockApp()  // Menjalankan blok aplikasi
+                    blockScheduleManager.blockApp()
+                    return@launch
+                }
+
+                // VARIABLE SESSION LIMIT
+                if (!variableSessionManager.canStartNewSession(packageName)) {
+                    withContext(Dispatchers.Main) {
+                        variableSessionManager.showToast("This app is still on cool down period!")
+                    }
+                    variableSessionManager.blockApp()
+                    return@launch
                 }
 
                 if (variableSessionManager.askLimit(packageName)) {
-                    // Memulai FloatingDialogService alih-alih VariableSessionActivity
-                    val intent = Intent(context, VariableSessionDialogActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) // Penting agar bisa berjalan di luar MainActivity
-                    context.startActivity(intent)  // Memulai FloatingDialogService untuk menampilkan dialog mengambang
+                    withContext(Dispatchers.Main) {
+                        val intent = Intent(context, VariableSessionDialogActivity::class.java).apply {
+                            putExtra("PACKAGE_NAME", packageName)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                }
+
+                if (variableSessionManager.isLimitedApp(packageName)) {
+                    if (lastPackageName != packageName && !keyboardPackages.contains(packageName)) {
+                        lastPackageName?.let { previousPackage ->
+                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                        }
+
+                        variableSessionManager.startTimer(packageName, variableSessionViewModel)
+                        lastPackageName = packageName
+                    }
+                } else {
+                    if (lastPackageName != null && !keyboardPackages.contains(packageName)) {
+                        lastPackageName?.let { previousPackage ->
+                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                        }
+                        lastPackageName = null
+                    }
+                }
+
+                // BLOCK PERMANENT
+                Log.d("AccessibilityService", "Checking if $packageName is blocked...")
+
+                if (::blockedApps.isInitialized) {
+                    if (isAppBlocked(packageName)) {
+                        val appName = getAppName(packageName)
+                        Log.d("AccessibilityService", "App is blocked: $packageName ($appName)")
+                        withContext(Dispatchers.Main){
+                            Toast.makeText(context, "App $appName is blocked!", Toast.LENGTH_SHORT).show()
+                        }
+                        val intent = Intent(Intent.ACTION_MAIN)
+                        intent.addCategory(Intent.CATEGORY_HOME)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                    } else {
+                        Log.d("AccessibilityService", "App is not blocked: $packageName")
+                    }
+                } else {
+                    Log.d("AccessibilityService", "Blocked apps not initialized yet.")
                 }
             }
-
-
-//            // Variable Session
-//            if (packageName != lastPackageName) {
-//                // Aplikasi berpindah, simpan durasi penggunaan aplikasi sebelumnya
-//                lastPackageName?.let { previousPackage ->
-//                    val durationMinutes = (currentTimeMillis - lastStartTime) / 60000
-//                    serviceScope.launch {
-//                        variableSessionManager.updateSessionTime(previousPackage, durationMinutes.toInt())
-//                    }
-//                }
-//
-//                // Perbarui package yang sedang digunakan
-//                lastPackageName = packageName
-//                lastStartTime = currentTimeMillis
-//
-//                // Cek apakah aplikasi yang baru dibuka masuk dalam daftar yang dibatasi
-//                serviceScope.launch {
-//                    val isLimited = variableSessionManager.isLimitedApp(packageName)
-//                    if (isLimited) {
-//                        variableSessionManager.reduceMinutesLeft(packageName)
-//                    }
-//                }
-//            }
         }
     }
 
     override fun onInterrupt() {
         Log.d("BlockApp", "Service terputus!")
     }
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -100,12 +136,14 @@ class AppAccessibilityService : AccessibilityService() {
         val database = AppDatabase.getDatabase(this)
         val blockSchedulesDao = database.blockSchedulesDao()
         val variableSessionDao = database.variableSessionDao()
+        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
 
         // Inisialisasi manager
         blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+        loadBlockedApps()
 
         // Setup service info untuk accessibility service
         val info = AccessibilityServiceInfo().apply {
@@ -132,5 +170,21 @@ class AppAccessibilityService : AccessibilityService() {
             Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
             sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
         }
+    }
+
+    private fun loadBlockedApps() {
+        coroutineScope.launch {
+            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
+                blockedApps = apps
+                Log.d("AccessibilityService", "Blocked apps loaded: ${blockedApps.map { it.packageName }}")
+            }
+        }
+    }
+    private fun isAppBlocked(packageName: String): Boolean {
+        return blockedApps.any { it.packageName == packageName && it.isActive }
+    }
+
+    private fun getAppName(packageName: String): String {
+        return blockedApps.find { it.packageName == packageName }?.appName ?: packageName
     }
 }

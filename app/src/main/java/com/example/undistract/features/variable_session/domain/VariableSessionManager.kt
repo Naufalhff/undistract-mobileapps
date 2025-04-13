@@ -2,6 +2,9 @@ package com.example.undistract.features.variable_session.domain
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -35,124 +38,177 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.undistract.core.AppAccessibilityService
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
+import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import java.time.LocalDate
 import java.time.LocalTime
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class VariableSessionManager(private val context: Context, private val dao: VariableSessionDao) {
 
-    suspend fun askLimit(packageName: String): Boolean {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
+    private var startTime: Long = 0L
+    private var elapsedSeconds = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private var stopwatchRunnable: Runnable? = null
+    private var hasShownToast = false
 
+    suspend fun askLimit(packageName: String): Boolean {
+        val session = dao.getVariableSession(packageName).firstOrNull()
         return session?.let {
-            it.minutesLeft <= 0 && it.isActive
+            it.secondsLeft <= 0 && it.isActive
         } ?: false
     }
 
-
     suspend fun isLimitedApp(packageName: String): Boolean {
-        val session = dao.getVariableSession(packageName)?.firstOrNull() // Ambil item pertama jika ada
-        return session != null
+        val session = dao.getVariableSession(packageName).firstOrNull()
+        return session?.let {
+            it.secondsLeft > 0 && it.isActive
+        } ?: false
     }
 
-    suspend fun reduceMinutesLeft(packageName: String) {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
-        session?.let {
-            if (it.minutesLeft > 0) {
-                dao.updateMinutesLeft(packageName, it.minutesLeft - 1)
-                Log.d("VariableSessionManager", "Reduced minutesLeft for $packageName to ${it.minutesLeft - 1}")
-            }
-        } ?: Log.d("VariableSessionManager", "Session not found for $packageName")
-    }
+    fun startTimer(packageName: String, viewModel: VariableSessionViewModel) {
+        startTime = System.currentTimeMillis()
+        elapsedSeconds = 0L
 
-    suspend fun updateSessionTime(packageName: String, duration: Int) {
-        val session = dao.getVariableSession(packageName)?.firstOrNull()
-        session?.let {
-            val updatedMinutes = it.minutesLeft + duration
-            dao.updateMinutesLeft(packageName, updatedMinutes)
-            Log.d("VariableSessionManager", "Updated minutesLeft for $packageName to $updatedMinutes")
-        } ?: Log.d("VariableSessionManager", "Session not found for $packageName")
-    }
 
-    @Composable
-    fun ShowDialog(){
-        var isOn by remember { mutableStateOf("Off") }
-        var hours by remember { mutableStateOf("") }
-        var minutes by remember { mutableStateOf("") }
-        var showDialog by remember { mutableStateOf(false) }
+        stopwatchRunnable = object : Runnable {
+            override fun run() {
+                elapsedSeconds++
 
-        // Konteks untuk dialog
-        val context = LocalContext.current
-        if (showDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Dialog(
-                    onDismissRequest = { showDialog = false },
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp)),
-                        color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Cool Down Period",
-                                style = MaterialTheme.typography.headlineSmall
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+                // Setiap 15 detik, lakukan pengurangan waktu dan pengecekan
+                if (elapsedSeconds % 15 == 0L) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        // Pengurangan waktu, pastikan selesai sebelum lanjut
+                        viewModel.subtractSecondsLeft(packageName, 15)
 
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                OutlinedTextField(
-                                    value = hours,
-                                    onValueChange = { newValue ->
-                                        hours = newValue.toIntOrNull()?.toString() ?: ""
-                                    },
-                                    label = { Text("Hours") },
-                                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = minutes,
-                                    onValueChange = { newValue ->
-                                        minutes = newValue.toIntOrNull()?.toString() ?: ""
-                                    },
-                                    label = { Text("Minutes") },
-                                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = { showDialog = false }) {
-                                    Text(text = "Cancel")
-                                }
-                                TextButton(onClick = {
-                                    showDialog = false
-                                    isOn = if (minutes.isNotEmpty() && minutes != "0" || hours.isNotEmpty() && hours != "0") "On" else "Off"
-                                }) {
-                                    Text(text = "OK")
+                        // Cek apakah sisa waktu kurang dari 60 detik
+                        val session = dao.getVariableSession(packageName).firstOrNull()
+                        session?.let{
+                            if (viewModel.aMinuteLeft(packageName) && !hasShownToast) {
+                                withContext(Dispatchers.Main) {
+                                    showToast("This session for ${session.appName} is less than 1 minute left!")
+                                    hasShownToast = true
                                 }
                             }
                         }
+                        Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
+
+                        delay(500)
+                        checkAndBlockApp(packageName)
+                    }
+                }
+                handler.postDelayed(this, 1000)
+            }
+        }
+
+        hasShownToast = false
+        handler.post(stopwatchRunnable!!)
+    }
+
+    suspend fun stopTimer(packageName: String, viewModel: VariableSessionViewModel) {
+        stopwatchRunnable?.let {
+            handler.removeCallbacks(it)
+            stopwatchRunnable = null
+        }
+
+        Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
+
+        val remainingTime = elapsedSeconds % 15
+        if (remainingTime > 0) {
+            dao.subtractSecondsLeft(packageName, remainingTime.toInt())
+            val session = dao.getVariableSession(packageName).firstOrNull()
+            session?.let {
+                if (session.secondsLeft <= 0) {
+                    if (session.coolDownDuration != null && session.coolDownDuration > 0) {
+                        val coolDownDuration = session.coolDownDuration * 1000
+                        val coolDownEndTime = System.currentTimeMillis() + coolDownDuration
+
+                        dao.updateCoolDownEndTime(packageName, coolDownEndTime)
+                        dao.updateIsOnCoolDown(packageName, true)
+                        Log.d("CD DURATION", "OK")
                     }
                 }
             }
+            Log.d("UsageTracker", "Mengurangi sisa waktu $remainingTime detik dari limit aplikasi.")
         }
+
+        elapsedSeconds = 0L
+
+        Log.d("UsageTracker", "Timer untuk $packageName telah dihentikan.")
+    }
+
+    suspend fun checkAndBlockApp(packageName: String) {
+        val session = dao.getVariableSession(packageName).firstOrNull()
+        val currentTime = System.currentTimeMillis()
+        session?.let {
+            if (session.secondsLeft <= 0) {
+                if (session.coolDownDuration != null && session.coolDownDuration > 0) {
+                    val coolDownDuration = session.coolDownDuration * 1000
+                    val coolDownEndTime = System.currentTimeMillis() + coolDownDuration
+
+                    dao.updateCoolDownEndTime(packageName, coolDownEndTime)
+                    dao.updateIsOnCoolDown(packageName, true)
+                }
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Session timed out, app blocked", Toast.LENGTH_SHORT).show()
+                }
+                dao.updateSecondsLeft(session.packageName, 0)
+                blockApp()
+            } else {
+                Log.d("SessionInfo", "Sisa waktu: ${session.secondsLeft} detik")
+            }
+        }
+    }
+
+    suspend fun canStartNewSession(packageName: String): Boolean {
+        val session = dao.getVariableSession(packageName).firstOrNull()
+        val currentTime = System.currentTimeMillis()
+
+        return session?.let {
+            if (it.isOnCoolDown && it.coolDownEndTime != null && currentTime >= it.coolDownEndTime) {
+                dao.updateIsOnCoolDown(packageName, false)
+                return@let true
+            }
+            !it.isOnCoolDown
+        } ?: true
+    }
+
+    fun blockApp() {
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(homeIntent)
+    }
+
+    fun showToast(message: String) {
+        handler.post {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun getAppInfoFromPackageNames(context: Context, packageNames: List<String>): List<Pair<String, String>> {
+        val packageManager: PackageManager = context.packageManager
+        val appInfoList = mutableListOf<Pair<String, String>>()
+
+        for (packageName in packageNames) {
+            try {
+                val appName = packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                ).toString()
+                // Menambahkan pasangan nama aplikasi dan package name
+                appInfoList.add(Pair(appName, packageName))
+            } catch (e: PackageManager.NameNotFoundException) {
+                appInfoList.add(Pair("Unknown", packageName))
+            }
+        }
+        return appInfoList
     }
 }

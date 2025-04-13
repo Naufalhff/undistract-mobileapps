@@ -22,10 +22,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.features.select_apps.presentation.AppInfo
+import com.example.undistract.R
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
+import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
+import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import com.example.undistract.ui.components.BackButton
+import com.example.undistract.ui.navigation.BottomNavItem
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.example.undistract.ui.theme.ColorNew
@@ -33,11 +42,21 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
+fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedulesViewModel, selectAppViewModel: SelectAppsViewModel) {
+    val context = LocalContext.current
+    // Mengambil selected apps
+    selectAppViewModel.updateCurrentRoute("block_schedules")
+    val selectedApps = selectAppViewModel.getSelectedApps()
+    val database = AppDatabase.getDatabase(context)
+    val blockSchedulesDao = database.blockSchedulesDao()
+    val blockScheduleManager = BlockScheduleManager(context, blockSchedulesDao)
+    val listApps = blockScheduleManager.getAppInfoFromPackageNames(context, selectedApps)
+
     // State untuk hari yang dipilih
     val days = listOf("S", "M", "T", "W", "T", "F", "S")
     var selectedDays = remember { mutableStateOf(MutableList(7) { false }) }
     val allSelected by remember { derivedStateOf { selectedDays.value.all { it } } }
+    val allNotSelected by remember { derivedStateOf { selectedDays.value.none { it } } }
 
 
     // State untuk jam
@@ -48,9 +67,6 @@ fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
     // Formatter untuk menampilkan waktu
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    // Konteks untuk dialog
-    val context = LocalContext.current
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,21 +74,41 @@ fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        Column(
+        Row (
             modifier = Modifier
                 .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            ShowYouTubeApp(context)
+            BackButton (
+                modifier = Modifier.size(24.dp),
+                onClick = { navController.popBackStack()}
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = "Block on Schedules",
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
         ) {
-            Text ("When do you want to block selected apps?", style = MaterialTheme.typography.bodyMedium)
+            GetAppInfo(context, selectedApps)
         }
 
-        // Pemilihan Hari (sama seperti sebelumnya)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Text ("When do you want to block the selected apps?", style = MaterialTheme.typography.bodyMedium)
+        }
+
+        // Pemilihan Hari
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
@@ -132,7 +168,6 @@ fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Start Time
             Column(
                 modifier = Modifier
                     .clickable {
@@ -155,7 +190,6 @@ fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
                 )
             }
 
-            // Panah di tengah
             Icon(
                 imageVector = Icons.AutoMirrored.Default.ArrowForward,
                 contentDescription = "Arrow",
@@ -187,41 +221,68 @@ fun BlockSchedulesScreen(viewModel: BlockSchedulesViewModel) {
             }
         }
 
-        Column (
-            modifier = Modifier
-                .fillMaxWidth()
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
             val coroutineScope = rememberCoroutineScope()
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    coroutineScope.launch {
-                        try {
-                            val selectedDaysList = selectedDays.value.toList()
-                            viewModel.addBlockSchedules(
-                                apps = listOf(Pair("Youtube", "com.google.android.youtube")),
-                                daysOfWeek = selectedDaysList.toString(),
-                                isAllDay = isAllDay,
-                                startTime = startTime.toString(),
-                                endTime = endTime.toString(),
-                                isActive = true
-                            )
 
-                            Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                            Log.e("SAVE_ERROR", "Failed to save block schedule", e)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = ColorNew.primary
+                    ),
+                    onClick = {
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ColorNew.primary,
+                        contentColor = Color.White
+                    ),
+                    onClick = {
+                        when {
+                            selectedApps.isEmpty() -> Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
+                            allNotSelected -> Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
+                            startTime == endTime -> Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
+                            else -> coroutineScope.launch {
+                                try {
+                                    viewModel.addBlockSchedules(
+                                        apps = listApps,
+                                        daysOfWeek = selectedDays.value.toList().toString(),
+                                        isAllDay = isAllDay,
+                                        startTime = startTime.toString(),
+                                        endTime = endTime.toString(),
+                                        isActive = true
+                                    )
+                                    navController.popBackStack()
+                                    Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Log.e("SAVE_ERROR", "Failed to save block schedule", e)
+                                }
+                            }
                         }
                     }
+                ) {
+                    Text("Save")
                 }
-            ) {
-                Text("Save")
             }
         }
     }
 }
 
-// Komponen DaySelector tetap sama seperti sebelumnya
 @Composable
 fun DaySelector(
     day: String,
@@ -266,22 +327,21 @@ fun DaySelector(
 }
 
 @Composable
-fun ShowYouTubeApp(context: Context) {
+fun GetAppInfo(context: Context, packageName: List<String>) {
     val packageManager = context.packageManager
-    val youtubePackage = "com.google.android.youtube"
 
-    // Coba ambil info aplikasi YouTube
-    val youtubeApp = try {
-        packageManager.getApplicationInfo(youtubePackage, PackageManager.GET_META_DATA)
+    // Coba ambil info aplikasi
+    val app = try {
+        packageManager.getApplicationInfo(packageName.firstOrNull()?: "", PackageManager.GET_META_DATA)
     } catch (e: PackageManager.NameNotFoundException) {
         null
     }
 
-    if (youtubeApp != null) {
+    if (app != null) {
         val appInfo = AppInfo(
-            name = packageManager.getApplicationLabel(youtubeApp).toString(),
-            packageName = youtubeApp.packageName,
-            icon = youtubeApp.loadIcon(packageManager)
+            name = packageManager.getApplicationLabel(app).toString(),
+            packageName = app.packageName,
+            icon = app.loadIcon(packageManager)
         )
 
         // Tampilkan di UI
@@ -309,13 +369,19 @@ fun ShowYouTubeApp(context: Context) {
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // Nama aplikasi
+                val displayText = when {
+                    packageName.isEmpty() -> "No apps selected"
+                    packageName.size == 1 -> appInfo.name
+                    else -> "${appInfo.name}, and ${packageName.size - 1} more"
+                }
+
                 Text(
-                    text = appInfo.name,
+                    text = displayText,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
     } else {
-        Text("YouTube tidak ditemukan!", style = MaterialTheme.typography.bodyLarge)
+        Text("No app selected", style = MaterialTheme.typography.bodyLarge)
     }
 }

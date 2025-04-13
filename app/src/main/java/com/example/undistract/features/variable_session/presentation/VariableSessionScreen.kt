@@ -24,125 +24,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.R
-import com.example.undistract.features.select_apps.presentation.AppInfo
+import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.ui.theme.ColorNew
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-
+import androidx.navigation.NavController
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
+import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import com.example.undistract.features.variable_session.domain.VariableSessionManager
+import com.example.undistract.ui.components.BackButton
 
 @Composable
-fun VariableLimitDialog (viewModel: VariableSessionViewModel){
-
-    var showDialog by remember { mutableStateOf(false) }
-    var hours by remember { mutableStateOf("") }
-    var minutes by remember { mutableStateOf("") }
-    var isSet by remember { mutableStateOf(false) }
-    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    val coroutineScope = rememberCoroutineScope()
+fun VariableSessionScreen(navController: NavController, viewModel: VariableSessionViewModel, selectAppViewModel: SelectAppsViewModel) {
     val context = LocalContext.current
-
-    if (!isSet) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Dialog(
-                onDismissRequest = { isSet = true },
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
-                    color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Cool Down Period",
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            OutlinedTextField(
-                                value = hours,
-                                onValueChange = { newValue ->
-                                    hours = newValue.toIntOrNull()?.toString() ?: ""
-                                },
-                                label = { Text("Hours") },
-                                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = minutes,
-                                onValueChange = { newValue ->
-                                    minutes = newValue.toIntOrNull()?.toString() ?: ""
-                                },
-                                label = { Text("Minutes") },
-                                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            TextButton(onClick = {
-                                isSet = true
-                                backDispatcher?.onBackPressed() // Simulasi tombol Back
-                            }) {
-                                Text(text = "Cancel")
-                            }
-                            TextButton(onClick = {
-                                isSet = true
-                                backDispatcher?.onBackPressed()
-                                coroutineScope.launch {
-                                    try {
-                                        viewModel.addVariableSession(
-                                            apps = listOf(Pair("Youtube", "com.google.android.youtube")),
-                                            minutesLeft = calculate(minutes, hours),
-                                            isActive = true
-                                        )
-                                        Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        Log.e("SAVE_ERROR", "Failed to save variable session", e)
-                                    }
-                                }
-
-                            }) {
-                                Text(text = "OK")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        backDispatcher?.onBackPressed()
-    }
-}
-
-@Composable
-fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
 
     var showDialog by remember { mutableStateOf(false) }
     var isOn by remember { mutableStateOf("Off") }
-    var hours by remember { mutableStateOf("") }
-    var minutes by remember { mutableStateOf("") }
+    var coolDownHours by remember { mutableStateOf("") }
+    var coolDownMinutes by remember { mutableStateOf("") }
 
-    // Konteks untuk dialog
-    val context = LocalContext.current
+    // Mengambil selected apps
+    selectAppViewModel.updateCurrentRoute("variable_session")
+    val selectedApps = selectAppViewModel.getSelectedApps()
+    val database = AppDatabase.getDatabase(context)
+    val variableSessionDao = database.variableSessionDao()
+    val variableSessionManager = VariableSessionManager(context, variableSessionDao)
+    val listApps = variableSessionManager.getAppInfoFromPackageNames(context, selectedApps)
 
     if (showDialog) {
         Box(
@@ -157,7 +66,7 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp)),
-                    color = Color(0xFFFAF9F9)  // Background color applied directly to Surface
+                    color = Color(0xFFFAF9F9)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -174,9 +83,9 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             OutlinedTextField(
-                                value = hours,
+                                value = coolDownHours,
                                 onValueChange = { newValue ->
-                                    hours = newValue.toIntOrNull()?.toString() ?: ""
+                                    coolDownHours = newValue.toIntOrNull()?.toString() ?: ""
                                 },
                                 label = { Text("Hours") },
                                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -184,9 +93,9 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedTextField(
-                                value = minutes,
+                                value = coolDownMinutes,
                                 onValueChange = { newValue ->
-                                    minutes = newValue.toIntOrNull()?.toString() ?: ""
+                                    coolDownMinutes = newValue.toIntOrNull()?.toString() ?: ""
                                 },
                                 label = { Text("Minutes") },
                                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -204,7 +113,7 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
                             }
                             TextButton(onClick = {
                                 showDialog = false
-                                isOn = if (minutes.isNotEmpty() && minutes != "0" || hours.isNotEmpty() && hours != "0") "On" else "Off"
+                                isOn = if (coolDownMinutes.isNotEmpty() && coolDownMinutes != "0" || coolDownHours.isNotEmpty() && coolDownHours != "0") "On" else "Off"
                             }) {
                                 Text(text = "OK")
                             }
@@ -222,11 +131,31 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
+        Row (
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BackButton (
+                modifier = Modifier.size(24.dp),
+                onClick = { navController.popBackStack()}
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = "Custom session restriction",
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
         ) {
-            ShowYouTubeApp(context)
+            GetAppInfo(context, selectedApps)
         }
 
         Row(
@@ -282,30 +211,170 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
             }
         }
 
-        Column (
-            modifier = Modifier
-                .fillMaxWidth()
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
             val coroutineScope = rememberCoroutineScope()
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    coroutineScope.launch {
-                        try {
-                            viewModel.addVariableSession(
-                                apps = listOf(Pair("Youtube", "com.google.android.youtube"), Pair("WhatsApp", "com.android.whatsapp")),
-                                minutesLeft = calculate(minutes, hours),
-                                isActive = true
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = ColorNew.primary
+                    ),
+                    onClick = {
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ColorNew.primary,
+                        contentColor = Color.White
+                    ),
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                if (selectedApps.isEmpty()) {
+                                    Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.addVariableSession(
+                                        apps = listApps,
+                                        secondsLeft = 0,
+                                        coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
+                                        coolDownEndTime = null,
+                                        isOnCooldown = false,
+                                        isActive = true
+                                    )
+                                    navController.popBackStack()
+                                    Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Log.e("SAVE_ERROR", "Failed to save variable session", e)
+                            }
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VariableLimitDialog (navController: NavController, viewModel: VariableSessionViewModel, packageName: String){
+
+    var showDialog by remember { mutableStateOf(false) }
+    var hours by remember { mutableStateOf("") }
+    var minutes by remember { mutableStateOf("") }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Dialog(
+            onDismissRequest = { },
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp)),
+                color = Color(0xFFFAF9F9)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Session Limit",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        OutlinedTextField(
+                            value = hours,
+                            onValueChange = { newValue ->
+                                hours = newValue.toIntOrNull()?.toString() ?: ""
+                            },
+                            label = { Text("Hours") },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = minutes,
+                            onValueChange = { newValue ->
+                                minutes = newValue.toIntOrNull()?.toString() ?: ""
+                            },
+                            label = { Text("Minutes") },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                        TextButton(onClick = {
+                            viewModel.updateIsActive(
+                                packageName,
+                                false
                             )
-                            Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                            Log.e("SAVE_ERROR", "Failed to save variable session", e)
+                            context.startActivity(launchIntent)
+                        }) {
+                            Text(text = "Don't Limit")
+                        }
+                        TextButton(onClick = {
+                            coroutineScope.launch {
+                                try {
+                                    val minutesValue = minutes.trim()
+                                    val hoursValue = hours.trim()
+
+                                    val isMinutesEmpty = minutesValue.isEmpty() || minutesValue == "0"
+                                    val isHoursEmpty = hoursValue.isEmpty() || hoursValue == "0"
+
+                                    if (isMinutesEmpty && isHoursEmpty) {
+                                        Toast.makeText(context, "Please insert minutes and/or hours to limit the session", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.updateSecondsLeft(packageName, calculate(minutesValue, hoursValue))
+                                        context.startActivity(launchIntent)
+                                        Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                    }
+
+                                } catch (e: Exception) {
+                                    navController.popBackStack()
+                                    Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Log.e("SAVE_ERROR", "Failed to save variable session", e)
+                                }
+                            }
+
+                        }) {
+                            Text(text = "OK")
                         }
                     }
                 }
-            ) {
-                Text("Save")
             }
         }
     }
@@ -314,30 +383,26 @@ fun VariableSessionScreen(viewModel: VariableSessionViewModel) {
 fun calculate(minutes: String, hours: String): Int {
     val min = minutes.toIntOrNull() ?: 0
     val hr = hours.toIntOrNull() ?: 0
-    return min + (hr * 60)
+    return (min + (hr * 60)) * 60
 }
 
-
 @Composable
-fun ShowYouTubeApp(context: Context) {
+fun GetAppInfo(context: Context, packageName: List<String>) {
     val packageManager = context.packageManager
-    val youtubePackage = "com.google.android.youtube"
 
-    // Coba ambil info aplikasi YouTube
-    val youtubeApp = try {
-        packageManager.getApplicationInfo(youtubePackage, PackageManager.GET_META_DATA)
+    val app = try {
+        packageManager.getApplicationInfo(packageName.firstOrNull()?: "", PackageManager.GET_META_DATA)
     } catch (e: PackageManager.NameNotFoundException) {
         null
     }
 
-    if (youtubeApp != null) {
+    if (app != null) {
         val appInfo = AppInfo(
-            name = packageManager.getApplicationLabel(youtubeApp).toString(),
-            packageName = youtubeApp.packageName,
-            icon = youtubeApp.loadIcon(packageManager)
+            name = packageManager.getApplicationLabel(app).toString(),
+            packageName = app.packageName,
+            icon = app.loadIcon(packageManager)
         )
 
-        // Tampilkan di UI
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -352,7 +417,6 @@ fun ShowYouTubeApp(context: Context) {
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             )  {
-                // Menampilkan ikon aplikasi
                 Image(
                     painter = rememberAsyncImagePainter(appInfo.icon),
                     contentDescription = appInfo.name,
@@ -361,14 +425,19 @@ fun ShowYouTubeApp(context: Context) {
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Nama aplikasi
+                val displayText = when {
+                    packageName.isEmpty() -> "No apps selected"
+                    packageName.size == 1 -> appInfo.name
+                    else -> "${appInfo.name}, and ${packageName.size - 1} more"
+                }
+
                 Text(
-                    text = appInfo.name,
+                    text = displayText,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
     } else {
-        Text("YouTube tidak ditemukan!", style = MaterialTheme.typography.bodyLarge)
+        Text("No app selected", style = MaterialTheme.typography.bodyLarge)
     }
 }
