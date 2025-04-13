@@ -32,6 +32,7 @@ import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.core.content.ContextCompat
@@ -49,6 +50,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.example.undistract.features.usage_limit.domain.AppLimitInfo
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,8 +65,17 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
-            SetaDailyLimitRepositoryImpl(
+            repository = SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
+            ),
+            blockSchedulesRepository = BlockSchedulesRepository(
+                AppDatabase.getDatabase(context).blockSchedulesDao()
+            ),
+            variableSessionRepository = VariableSessionRepository(
+                AppDatabase.getDatabase(context).variableSessionDao()
+            ),
+            blockPermanentRepository = BlockPermanentRepository(
+                AppDatabase.getDatabase(context).blockPermanentDao()
             )
         )
     )
@@ -73,6 +88,9 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Akses dailyLimits dari UsageLimitViewModel
     val dailyLimits by usageLimitViewModel.dailyLimits.collectAsState()
     val appUsageProgress by usageLimitViewModel.appUsageProgress.collectAsState()
+
+    // Akses variableSessions dari UsageLimitViewModel
+    val variableSessions by usageLimitViewModel.variableSessions.collectAsState()
 
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps by produceState(initialValue = mutableListOf<AppLimitInfo>(), dailyLimits, appUsageProgress) {
@@ -138,6 +156,12 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
     }
+
+    // Ambil data aplikasi yang diblokir
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
+
+    // Akses blockPermanentApps dari UsageLimitViewModel
+    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
 
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->
@@ -337,6 +361,58 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                 }
                             )
                         }
+
+                        // Tampilkan aplikasi yang diblokir
+                        if (blockedApps.isNotEmpty()) {
+                            BlockedAppsSection(
+                                title = "BLOCKED APPS",
+                                apps = blockedApps,
+                                context = context,
+                                viewModel = usageLimitViewModel,
+                                onAppToggleChange = { index, isChecked ->
+                                    // Update status toggle di ViewModel
+                                    usageLimitViewModel.toggleBlockSchedule(blockedApps[index].id, isChecked)
+                                }
+                            )
+                        }
+
+                        if (variableSessions.isNotEmpty()) {
+                            LimitSection(
+                                title = "VARIABLE SESSIONS",
+                                count = variableSessions.size,
+                                apps = variableSessions.map { session ->
+                                    AppLimitInfo(
+                                        appName = session.appName,
+                                        packageName = session.packageName,
+                                        icon = usageLimitViewModel.getAppIcon(context, session.packageName)!!,
+                                        isBlocked = session.isActive,
+                                        timeLimit = "${session.secondsLeft / 60}m ${session.secondsLeft % 60}s",
+                                        progress = if (session.isActive) 1f else 0f
+                                    )
+                                },
+                                showProgress = true,
+                                onAppToggleChange = { index, isActive ->
+                                    val session = variableSessions[index]
+                                    usageLimitViewModel.toggleVariableSessionActiveState(session.packageName, isActive)
+                                },
+                                onEditClick = { index ->
+                                    // Navigasi ke edit screen jika diperlukan
+                                }
+                            )
+                        }
+
+                        if (blockPermanentApps.isNotEmpty()) {
+                            BlockPermanentSection(
+                                title = "BLOCKED PERMANENTLY",
+                                apps = blockPermanentApps,
+                                context = context,
+                                viewModel = usageLimitViewModel,
+                                onAppToggleChange = { index, isActive ->
+                                    val app = blockPermanentApps[index]
+                                    usageLimitViewModel.toggleBlockPermanentActiveState(app.id, isActive)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -466,9 +542,221 @@ fun AppLimitItem(
             }
         }
 
-
         Switch(
             checked = app.isBlocked,
+            onCheckedChange = { isChecked ->
+                onToggleChange(isChecked)
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Purple40,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = Color.LightGray
+            )
+        )
+    }
+}
+
+@Composable
+fun BlockedAppsSection(
+    title: String,
+    apps: List<BlockSchedulesEntity>,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onAppToggleChange: (Int, Boolean) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$title (${apps.size})",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand",
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+        }
+
+        if (expanded) {
+            apps.forEachIndexed { index, app ->
+                BlockedAppItem(
+                    app = app,
+                    context = context,
+                    viewModel = viewModel,
+                    onToggleChange = { isChecked ->
+                        onAppToggleChange(index, isChecked)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BlockedAppItem(
+    app: BlockSchedulesEntity,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onToggleChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(viewModel.getAppIcon(context, app.packageName)),
+            contentDescription = app.appName,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp)
+        ) {
+            Text(
+                text = app.appName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            // Process daysOfWeek string
+            val daysMap = mapOf(
+                'M' to "Mon",
+                'T' to "Tue",
+                'W' to "Wed",
+                'R' to "Thu", // Assuming 'R' for Thursday
+                'F' to "Fri",
+                'S' to "Sat",
+                'U' to "Sun"  // Assuming 'U' for Sunday
+            )
+
+            val activeDays = app.daysOfWeek.mapNotNull { day ->
+                daysMap[day]
+            }.joinToString(", ")
+
+            Text(
+                text = "Schedule: $activeDays ${app.startTime} - ${app.endTime}",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+
+        Switch(
+            checked = app.isActive,
+            onCheckedChange = { isChecked -> 
+                onToggleChange(isChecked) 
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Purple40,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = Color.LightGray
+            )
+        )
+    }
+}
+
+@Composable
+fun BlockPermanentSection(
+    title: String,
+    apps: List<BlockPermanentEntity>,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onAppToggleChange: (Int, Boolean) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$title (${apps.size})",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand",
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+        }
+
+        if (expanded) {
+            apps.forEachIndexed { index, app ->
+                BlockPermanentItem(
+                    app = app,
+                    context = context,
+                    viewModel = viewModel,
+                    onToggleChange = { isChecked ->
+                        onAppToggleChange(index, isChecked)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BlockPermanentItem(
+    app: BlockPermanentEntity,
+    context: Context,
+    viewModel: UsageLimitViewModel,
+    onToggleChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(viewModel.getAppIcon(context, app.packageName)),
+            contentDescription = app.appName,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp)
+        ) {
+            Text(
+                text = app.appName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Switch(
+            checked = app.isActive,
             onCheckedChange = { isChecked ->
                 onToggleChange(isChecked)
             },

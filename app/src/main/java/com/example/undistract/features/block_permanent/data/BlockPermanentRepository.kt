@@ -2,6 +2,7 @@ package com.example.undistract.features.block_permanent.data
 
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
+import kotlinx.coroutines.flow.Flow
 
 class BlockPermanentRepository (private val dao: BlockPermanentDao) {
 
@@ -21,7 +22,11 @@ class BlockPermanentRepository (private val dao: BlockPermanentDao) {
         dao.updateIsActive(id, isActive)
     }
 
-    suspend fun getActiveBlockPermanent(): List<BlockPermanentEntity> {
+    fun getActiveBlockPermanent(): Flow<List<BlockPermanentEntity>> {
         return dao.getActiveBlockPermanent()
+    }
+
+    suspend fun deleteBlockPermanentById(id: Int) {
+        dao.deleteBlockPermanent(id)
     }
 }

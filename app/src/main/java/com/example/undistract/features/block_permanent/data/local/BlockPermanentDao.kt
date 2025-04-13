@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BlockPermanentDao {
@@ -20,6 +21,6 @@ interface BlockPermanentDao {
     suspend fun updateIsActive(id: Int, isActive: Boolean)
 
     @Query("SELECT * FROM block_permanent_table WHERE isActive = 1")
-    suspend fun getActiveBlockPermanent(): List<BlockPermanentEntity>
+     fun getActiveBlockPermanent(): Flow<List<BlockPermanentEntity>>
 
 }

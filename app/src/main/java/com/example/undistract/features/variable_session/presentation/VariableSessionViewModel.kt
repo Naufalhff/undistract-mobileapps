@@ -7,6 +7,7 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,7 +19,7 @@ class VariableSessionViewModel(
     private val _showDialog = MutableStateFlow(false)
     val showDialog: StateFlow<Boolean> get() = _showDialog
 
-    val variableSession: List<VariableSessionEntity> = repository.getAllVariableSession()
+    val allVariableSession: Flow<List<VariableSessionEntity>> = repository.getAllVariableSession()
 
     suspend fun getVariableSession(packageName: String): List<VariableSessionEntity> {
         return repository.getVariableSession(packageName)
@@ -73,6 +74,12 @@ class VariableSessionViewModel(
 
     fun dismissDialog() {
         _showDialog.value = false
+    }
+
+    fun insertVariableSession(data: VariableSessionEntity) {
+        viewModelScope.launch {
+            repository.insertVariableSession(data)
+        }
     }
 
 //    fun deleteBlockSchedule(id: Int) {

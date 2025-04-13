@@ -12,7 +12,8 @@ class BlockSchedulesViewModel(
     private val repository: BlockSchedulesRepository
 ) : ViewModel() {
 
-    val blockedSchedules: List<BlockSchedulesEntity> = repository.getAllBlockSchedules()
+    val blockedSchedules: LiveData<List<BlockSchedulesEntity>> = repository.getAllBlockSchedules()
+        .asLiveData()
 
     fun addBlockSchedules(
         apps: List<Pair<String, String>>,

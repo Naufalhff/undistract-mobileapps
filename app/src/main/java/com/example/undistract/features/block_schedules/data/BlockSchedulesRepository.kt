@@ -8,7 +8,7 @@ class BlockSchedulesRepository(
     private val dao: BlockSchedulesDao
 )  {
 
-    fun getAllBlockSchedules(): List<BlockSchedulesEntity> = dao.getAllBlockSchedules()
+    fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>> = dao.getAllBlockSchedules()
 
     suspend fun addBlockSchedulesForMultipleApps(
         apps: List<Pair<String, String>>, // List pasangan (nama aplikasi, packageName)
@@ -30,5 +30,9 @@ class BlockSchedulesRepository(
             )
             dao.insertBlockSchedules(schedule)
         }
+    }
+
+    suspend fun deleteBlockSchedules(id: Int) {
+        dao.deleteBlockSchedules(id)
     }
 }

@@ -174,8 +174,10 @@ class AppAccessibilityService : AccessibilityService() {
 
     private fun loadBlockedApps() {
         coroutineScope.launch {
-            blockedApps = blockPermanentRepository.getActiveBlockPermanent()
-            Log.d("AccessibilityService", "Blocked apps loaded: ${blockedApps.map { it.packageName }}")
+            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
+                blockedApps = apps
+                Log.d("AccessibilityService", "Blocked apps loaded: ${blockedApps.map { it.packageName }}")
+            }
         }
     }
     private fun isAppBlocked(packageName: String): Boolean {

@@ -27,6 +27,7 @@ import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.usage_limit.domain.AppLimitInfo
 import com.example.undistract.ui.theme.Purple40
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -35,8 +36,10 @@ import coil.compose.rememberAsyncImagePainter
 import android.util.Log
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
-import android.os.Parcelable
-import com.example.undistract.features.usage_limit.domain.AppLimitInfo
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import androidx.compose.runtime.snapshots.SnapshotStateList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,35 +49,59 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
 
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
-            SetaDailyLimitRepositoryImpl(
+            repository = SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
+            ),
+            blockSchedulesRepository = BlockSchedulesRepository(
+                AppDatabase.getDatabase(context).blockSchedulesDao()
+            ),
+            variableSessionRepository = VariableSessionRepository(
+                AppDatabase.getDatabase(context).variableSessionDao()
+            ),
+            blockPermanentRepository = BlockPermanentRepository(
+                AppDatabase.getDatabase(context).blockPermanentDao()
             )
         )
     )
 
-    // Akses dailyLimits dari UsageLimitViewModel
+    // Access data from UsageLimitViewModel
     val dailyLimits by usageLimitViewModel.dailyLimits.collectAsState()
     val appUsageProgress by usageLimitViewModel.appUsageProgress.collectAsState()
+    // Access blocked apps data
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
+    // Access variable sessions data
+    val variableSessions by usageLimitViewModel.variableSessions.collectAsState()
+    // Access permanently blocked apps data
+    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
 
-    // State untuk menampung aplikasi yang dibatasi
-    val limitedUsageApps = remember { mutableStateListOf<AppLimitInfo>() }
+    // States for app lists that can be selected for deletion
+    var limitedUsageApps = remember { mutableStateListOf<AppLimitInfo>() }
+    var blockedScheduleApps = remember { mutableStateListOf<AppLimitInfo>() }
+    var variableSessionApps = remember { mutableStateListOf<AppLimitInfo>() }
+    var permanentlyBlockedApps = remember { mutableStateListOf<AppLimitInfo>() }
+
+    // State to force recomposition when selections change
+    var selectionState by remember { mutableStateOf(0) }
+
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Update limitedUsageApps ketika dailyLimits berubah
+    // Function to update selection state and trigger recomposition
+    fun updateSelectionState() {
+        selectionState++
+    }
+
+    // Update limitedUsageApps when dailyLimits changes
     LaunchedEffect(dailyLimits, appUsageProgress) {
-        limitedUsageApps.clear()
+        val newLimitedUsageApps = mutableListOf<AppLimitInfo>()
         dailyLimits.forEach { limit ->
             try {
-                // Try to get the app icon from the package manager first
+                // Get app icon
                 val packageManager = context.packageManager
                 val iconDrawable = try {
-                    // First try to get the actual app icon from the package manager
                     packageManager.getApplicationIcon(limit.packageName)
                 } catch (e: PackageManager.NameNotFoundException) {
-                    // If that fails, try to use the stored icon string
                     try {
-                        // Try to convert the icon string to a resource ID
                         val iconResId = limit.icon.toIntOrNull() ?: R.drawable.app_logo
                         ContextCompat.getDrawable(context, iconResId)
                     } catch (e: Exception) {
@@ -83,27 +110,161 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                     }
                 } ?: ContextCompat.getDrawable(context, R.drawable.app_logo)!!
 
-                // Get the progress from the ViewModel
-                val progress = appUsageProgress[limit.packageName] ?: 0f
+                // Calculate progress and time formatting
+                val progress = if (limit.isActive) {
+                    appUsageProgress[limit.packageName] ?: 0f
+                } else {
+                    0f
+                }
 
-                // Calculate used time in minutes
-                val usedMinutes = (progress * limit.timeLimitMinutes).toInt()
+                val usedMinutes = if (limit.isActive) {
+                    (progress * limit.timeLimitMinutes).toInt()
+                } else {
+                    0
+                }
+
                 val timeLimit = "${limit.timeLimitMinutes / 60}h ${limit.timeLimitMinutes % 60}m"
                 val usageText = "$timeLimit (${usedMinutes}m used)"
 
-                limitedUsageApps.add(
+                newLimitedUsageApps.add(
                     AppLimitInfo(
                         id = limit.id,
                         appName = limit.appName,
                         packageName = limit.packageName,
                         icon = iconDrawable,
                         timeLimit = usageText,
-                        progress = progress
+                        progress = progress,
+                        isBlocked = limitedUsageApps.find { it.id == limit.id }?.isBlocked ?: false // Preserve selection state
                     )
                 )
             } catch (e: Exception) {
                 Log.e("EditUsageLimitScreen", "Error creating AppLimitInfo for ${limit.appName}", e)
             }
+        }
+        limitedUsageApps.clear()
+        limitedUsageApps.addAll(newLimitedUsageApps)
+        updateSelectionState()
+    }
+
+    // Update blockedScheduleApps when blockedApps changes
+    LaunchedEffect(blockedApps) {
+        val newBlockedScheduleApps = mutableListOf<AppLimitInfo>()
+        blockedApps.forEach { app ->
+            try {
+                val iconDrawable = try {
+                    context.packageManager.getApplicationIcon(app.packageName)
+                } catch (e: Exception) {
+                    ContextCompat.getDrawable(context, R.drawable.app_logo)
+                } ?: ContextCompat.getDrawable(context, R.drawable.app_logo)!!
+
+                // Process daysOfWeek string
+                val daysMap = mapOf(
+                    'M' to "Mon", 'T' to "Tue", 'W' to "Wed", 'R' to "Thu",
+                    'F' to "Fri", 'S' to "Sat", 'U' to "Sun"
+                )
+                val activeDays = app.daysOfWeek.mapNotNull { day -> daysMap[day] }.joinToString(", ")
+                val scheduleText = "Schedule: $activeDays ${app.startTime} - ${app.endTime}"
+
+                newBlockedScheduleApps.add(
+                    AppLimitInfo(
+                        id = app.id,
+                        appName = app.appName,
+                        packageName = app.packageName,
+                        icon = iconDrawable,
+                        timeLimit = scheduleText,
+                        isBlocked = blockedScheduleApps.find { it.id == app.id }?.isBlocked ?: false // Preserve selection state
+                    )
+                )
+            } catch (e: Exception) {
+                Log.e("EditUsageLimitScreen", "Error creating AppLimitInfo for blocked app ${app.appName}", e)
+            }
+        }
+        blockedScheduleApps.clear()
+        blockedScheduleApps.addAll(newBlockedScheduleApps)
+        updateSelectionState()
+    }
+
+    // Update variableSessionApps when variableSessions changes
+    LaunchedEffect(variableSessions) {
+        val newVariableSessionApps = mutableListOf<AppLimitInfo>()
+        variableSessions.forEach { session ->
+            try {
+                val iconDrawable = try {
+                    context.packageManager.getApplicationIcon(session.packageName)
+                } catch (e: Exception) {
+                    ContextCompat.getDrawable(context, R.drawable.app_logo)
+                } ?: ContextCompat.getDrawable(context, R.drawable.app_logo)!!
+
+                val timeText = "${session.secondsLeft / 60}m ${session.secondsLeft % 60}s"
+
+                newVariableSessionApps.add(
+                    AppLimitInfo(
+                        appName = session.appName,
+                        packageName = session.packageName,
+                        icon = iconDrawable,
+                        timeLimit = timeText,
+                        progress = 1f, // Full progress for variable sessions
+
+                    )
+                )
+            } catch (e: Exception) {
+                Log.e("EditUsageLimitScreen", "Error creating AppLimitInfo for variable session ${session.appName}", e)
+            }
+        }
+        variableSessionApps.clear()
+        variableSessionApps.addAll(newVariableSessionApps)
+        updateSelectionState()
+    }
+
+    // Update permanentlyBlockedApps when blockPermanentApps changes
+    LaunchedEffect(blockPermanentApps) {
+        val newPermanentlyBlockedApps = mutableListOf<AppLimitInfo>()
+        blockPermanentApps.forEach { app ->
+            try {
+                val iconDrawable = try {
+                    context.packageManager.getApplicationIcon(app.packageName)
+                } catch (e: Exception) {
+                    ContextCompat.getDrawable(context, R.drawable.app_logo)
+                } ?: ContextCompat.getDrawable(context, R.drawable.app_logo)!!
+
+                newPermanentlyBlockedApps.add(
+                    AppLimitInfo(
+                        id = app.id,
+                        appName = app.appName,
+                        packageName = app.packageName,
+                        icon = iconDrawable,
+                        timeLimit = "Permanently Blocked",
+                        isBlocked = permanentlyBlockedApps.find { it.id == app.id }?.isBlocked ?: false // Preserve selection state
+                    )
+                )
+            } catch (e: Exception) {
+                Log.e("EditUsageLimitScreen", "Error creating AppLimitInfo for permanently blocked app ${app.appName}", e)
+            }
+        }
+        permanentlyBlockedApps.clear()
+        permanentlyBlockedApps.addAll(newPermanentlyBlockedApps)
+        updateSelectionState()
+    }
+
+    // Initialize usage tracking
+    LaunchedEffect(Unit) {
+        usageLimitViewModel.initUsageTracking(context)
+        usageLimitViewModel.refreshUsageStats()
+    }
+
+    // Check if we have any restrictions defined
+    val noRestrictions = limitedUsageApps.isEmpty() &&
+            blockedScheduleApps.isEmpty() &&
+            variableSessionApps.isEmpty() &&
+            permanentlyBlockedApps.isEmpty()
+
+    // Determine if any apps are selected for deletion - force recomposition with selectionState
+    val anyAppsSelected by remember(selectionState) {
+        derivedStateOf {
+            limitedUsageApps.any { it.isBlocked } ||
+                    blockedScheduleApps.any { it.isBlocked } ||
+                    variableSessionApps.any { it.isBlocked } ||
+                    permanentlyBlockedApps.any { it.isBlocked }
         }
     }
 
@@ -168,27 +329,55 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
 
                 Button(
                     onClick = {
-                        // Delete selected items
+                        // Delete selected items from all categories
                         coroutineScope.launch {
-                            val selectedApps = limitedUsageApps.filter { it.isBlocked }
-                            if (selectedApps.isNotEmpty()) {
-                                try {
-                                    selectedApps.forEach { app ->
-                                        usageLimitViewModel.deleteDailyLimitById(app.id)
-                                    }
-                                    snackbarHostState.showSnackbar("Removed ${selectedApps.size} limits")
+                            var deleteCount = 0
+                            try {
+                                // Delete selected daily limits
+//                                limitedUsageApps.filter { it.isBlocked }.forEach { app ->
+//                                    usageLimitViewModel.deleteDailyLimitById(app.id)
+//                                    deleteCount++
+//                                }
+//
+//                                // Delete selected block schedules
+//                                blockedScheduleApps.filter { it.isBlocked }.forEach { app ->
+//                                    usageLimitViewModel.deleteBlockScheduleById(app.id)
+//                                    deleteCount++
+//                                }
+//
+//                                // Delete selected variable sessions
+//                                variableSessionApps.filter { it.isBlocked }.forEach { app ->
+//                                    usageLimitViewModel.deleteVariableSessionById(app.id.toString())
+//                                    deleteCount++
+//                                }
+//
+//                                // Delete selected permanent blocks
+//                                permanentlyBlockedApps.filter { it.isBlocked }.forEach { app ->
+//                                    usageLimitViewModel.deleteBlockPermanentById(app.id)
+//                                    deleteCount++
+//                                }
+
+                                if (deleteCount > 0) {
+                                    snackbarHostState.showSnackbar("Removed $deleteCount restrictions")
+                                    // Refresh all data
                                     usageLimitViewModel.refreshLimits()
-                                } catch (e: Exception) {
-                                    Log.e("EditUsageLimitScreen", "Error deleting limits", e)
-                                    snackbarHostState.showSnackbar("Failed to remove: ${e.message}")
+                                    usageLimitViewModel.refreshBlockedApps()
+                                    usageLimitViewModel.refreshVariableSessions()
+                                    usageLimitViewModel.refreshBlockPermanentApps()
+                                } else {
+                                    snackbarHostState.showSnackbar("No items selected for deletion")
                                 }
+                            } catch (e: Exception) {
+                                Log.e("EditUsageLimitScreen", "Error deleting restrictions", e)
+                                snackbarHostState.showSnackbar("Failed to remove: ${e.message}")
                             }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red,
+                        containerColor = if (anyAppsSelected) Color.Red else Color.Gray,
                         contentColor = Color.White
-                    )
+                    ),
+                    enabled = anyAppsSelected
                 ) {
                     Text("Delete")
                 }
@@ -216,7 +405,13 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                     fontWeight = FontWeight.SemiBold
                 )
 
-                IconButton(onClick = { usageLimitViewModel.refreshUsageStats() }) {
+                IconButton(onClick = {
+                    usageLimitViewModel.refreshUsageStats()
+                    usageLimitViewModel.refreshLimits()
+                    usageLimitViewModel.refreshBlockedApps()
+                    usageLimitViewModel.refreshVariableSessions()
+                    usageLimitViewModel.refreshBlockPermanentApps()
+                }) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Refresh",
@@ -225,19 +420,7 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                 }
             }
 
-
-
-            if (limitedUsageApps.isNotEmpty()) {
-                EditLimitSection(
-                    title = "LIMITED DAILY USAGE",
-                    count = limitedUsageApps.size,
-                    apps = limitedUsageApps,
-                    showProgress = true,
-                    onAppSelectionChange = { index, isSelected ->
-                        limitedUsageApps[index] = limitedUsageApps[index].copy(isBlocked = isSelected)
-                    }
-                )
-            } else {
+            if (noRestrictions) {
                 // Empty state
                 Column(
                     modifier = Modifier
@@ -276,6 +459,66 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                         Text("Add Limit")
                     }
                 }
+            } else {
+                // Display the four categories of restrictions
+
+                // 1. Daily Usage Limits
+                if (limitedUsageApps.isNotEmpty()) {
+                    EditLimitSection(
+                        title = "LIMITED DAILY USAGE",
+                        count = limitedUsageApps.size,
+                        apps = limitedUsageApps,
+                        showProgress = true,
+                        onAppSelectionChange = { index, isSelected ->
+                            limitedUsageApps[index] = limitedUsageApps[index].copy(isBlocked = isSelected)
+                            updateSelectionState()
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // 2. Blocked Apps (by schedule)
+                if (blockedScheduleApps.isNotEmpty()) {
+                    EditLimitSection(
+                        title = "BLOCKED APPS",
+                        count = blockedScheduleApps.size,
+                        apps = blockedScheduleApps,
+                        showTimeIcon = true,
+                        onAppSelectionChange = { index, isSelected ->
+                            blockedScheduleApps[index] = blockedScheduleApps[index].copy(isBlocked = isSelected)
+                            updateSelectionState()
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // 3. Variable Sessions
+                if (variableSessionApps.isNotEmpty()) {
+                    EditLimitSection(
+                        title = "VARIABLE SESSIONS",
+                        count = variableSessionApps.size,
+                        apps = variableSessionApps,
+                        showProgress = true,
+                        onAppSelectionChange = { index, isSelected ->
+                            variableSessionApps[index] = variableSessionApps[index].copy(isBlocked = isSelected)
+                            updateSelectionState()
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // 4. Permanently Blocked Apps
+                if (permanentlyBlockedApps.isNotEmpty()) {
+                    EditLimitSection(
+                        title = "BLOCKED PERMANENTLY",
+                        count = permanentlyBlockedApps.size,
+                        apps = permanentlyBlockedApps,
+                        onAppSelectionChange = { index, isSelected ->
+                            permanentlyBlockedApps[index] = permanentlyBlockedApps[index].copy(isBlocked = isSelected)
+                            updateSelectionState()
+                        }
+                    )
+                }
             }
         }
     }
@@ -291,7 +534,10 @@ fun EditLimitSection(
     onAppSelectionChange: (Int, Boolean) -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
-    var allSelected by remember { mutableStateOf(false) }
+    // Use derivedStateOf to properly track selection state
+    var allSelected by remember(apps) {
+        mutableStateOf(apps.isNotEmpty() && apps.all { it.isBlocked })
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -327,8 +573,8 @@ fun EditLimitSection(
 
             IconButton(onClick = { expanded = !expanded }) {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Expand",
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
                     modifier = Modifier.padding(4.dp)
                 )
             }
@@ -342,6 +588,7 @@ fun EditLimitSection(
                     showProgress = showProgress,
                     onSelectionChange = { isSelected ->
                         onAppSelectionChange(index, isSelected)
+                        // Update allSelected based on all items being selected
                         allSelected = apps.all { it.isBlocked }
                     }
                 )
@@ -370,7 +617,8 @@ fun EditAppLimitItem(
             },
             colors = CheckboxDefaults.colors(
                 checkedColor = Purple40,
-                uncheckedColor = Color.Gray
+                uncheckedColor = Color.Gray,
+                checkmarkColor = Color.White
             )
         )
 
@@ -394,17 +642,17 @@ fun EditAppLimitItem(
                 fontWeight = FontWeight.Medium
             )
 
-            if (showProgress && app.timeLimit != null) {
+            if (app.timeLimit != null) {
                 Text(
                     text = app.timeLimit,
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
 
-                app.progress?.let {
+                if (showProgress && app.progress != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = it,
+                        progress = app.progress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -437,8 +685,8 @@ fun EditAppLimitItem(
 fun uriToDrawable(context: Context, uriString: String): Drawable? {
     return try {
         val uri = Uri.parse(uriString)
-        ContextCompat.getDrawable(context, uri.toString().toInt()) // Jika URI adalah resource ID
+        ContextCompat.getDrawable(context, uri.toString().toInt()) // If URI is a resource ID
     } catch (e: Exception) {
-        null // Handle error jika konversi gagal
+        null // Handle error if conversion fails
     }
 }
