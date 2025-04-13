@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Undistract</string>
+    <string name="add_restriction">Add Restriction</string>
+    <string name="choose_apps_to_restrict">Choose apps to restrict</string>
+    <string name="choose_what_restriction">How would you like to restrict those apps?</string>
+    <string name="block_permanently">Block Permanently</string>
+    <string name="block_on_a_schedule">Block on a schedule</string>
+    <string name="restrict_daily_usage">Apply daily usage restriction</string>
+    <string name="apply_custom_session_restriction">Apply custom session restriction</string>
+    <string name="name_your_restriction">Name your restriction (Optional)</string>
 </resources>

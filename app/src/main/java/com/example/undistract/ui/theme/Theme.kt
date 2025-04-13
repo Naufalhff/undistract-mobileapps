@@ -7,8 +7,12 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+
+val Typography = Typography()
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -17,9 +21,16 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = PurpleBorder,
+    secondary = LightGray,
+    tertiary = GrayBorder,
+    background = WhiteBackground,
+    surface = WhiteBackground,
+    onPrimary = BlackText,
+    onSecondary = BlackText,
+    onTertiary = BlackText,
+    onBackground = BlackText,
+    onSurface = BlackText
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -31,6 +42,10 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
+
+object ColorNew {
+    val primary = Color(92, 38, 161)
+}
 
 @Composable
 fun UndistractTheme(

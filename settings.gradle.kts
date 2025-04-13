@@ -19,6 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Undistract"
+rootProject.name = "undistract"
 include(":app")
- 
