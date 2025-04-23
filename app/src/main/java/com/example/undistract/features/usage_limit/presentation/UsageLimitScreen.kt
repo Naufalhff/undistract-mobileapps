@@ -92,6 +92,12 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Akses variableSessions dari UsageLimitViewModel
     val variableSessions by usageLimitViewModel.variableSessions.collectAsState()
 
+    // Akses blockPermanentApps dari UsageLimitViewModel
+    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
+
+    // Ambil data aplikasi yang diblokir
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
+
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps by produceState(initialValue = mutableListOf<AppLimitInfo>(), dailyLimits, appUsageProgress) {
         value = dailyLimits.map { limit ->
@@ -150,18 +156,15 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     val isLoading by usageLimitViewModel.isLoading.collectAsState()
 
     // Check if there are any usage limits set
-    val hasNoLimits = limitedUsageApps.isEmpty()
+    val hasNoLimits = limitedUsageApps.isEmpty() &&
+            blockedApps.isEmpty() &&
+            variableSessions.isEmpty() &&
+            blockPermanentApps.isEmpty()
 
     // Pastikan untuk memanggil refreshUsageStats saat screen menjadi aktif
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
     }
-
-    // Ambil data aplikasi yang diblokir
-    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
-
-    // Akses blockPermanentApps dari UsageLimitViewModel
-    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
 
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->

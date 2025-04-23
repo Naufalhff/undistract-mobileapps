@@ -334,28 +334,28 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                             var deleteCount = 0
                             try {
                                 // Delete selected daily limits
-//                                limitedUsageApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteDailyLimitById(app.id)
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected block schedules
-//                                blockedScheduleApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteBlockScheduleById(app.id)
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected variable sessions
-//                                variableSessionApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteVariableSessionById(app.id.toString())
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected permanent blocks
-//                                permanentlyBlockedApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteBlockPermanentById(app.id)
-//                                    deleteCount++
-//                                }
+                                limitedUsageApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteDailyLimitById(app.id)
+                                    deleteCount++
+                                }
+
+                                // Delete selected block schedules
+                                blockedScheduleApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteBlockScheduleById(app.id)
+                                    deleteCount++
+                                }
+
+                                // Delete selected variable sessions
+                                variableSessionApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteVariableSessionById(app.id.toString())
+                                    deleteCount++
+                                }
+
+                                // Delete selected permanent blocks
+                                permanentlyBlockedApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteBlockPermanentById(app.id)
+                                    deleteCount++
+                                }
 
                                 if (deleteCount > 0) {
                                     snackbarHostState.showSnackbar("Removed $deleteCount restrictions")

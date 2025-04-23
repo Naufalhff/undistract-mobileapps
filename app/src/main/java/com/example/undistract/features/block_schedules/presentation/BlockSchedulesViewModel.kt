@@ -28,9 +28,9 @@ class BlockSchedulesViewModel(
         }
     }
 
-//    fun deleteBlockSchedule(id: Int) {
-//        viewModelScope.launch {
-//            repository.deleteBlockSchedules(id)
-//        }
-//    }
+    fun deleteBlockSchedule(id: Int) {
+        viewModelScope.launch {
+            repository.deleteBlockSchedules(id)
+        }
+    }
 }
