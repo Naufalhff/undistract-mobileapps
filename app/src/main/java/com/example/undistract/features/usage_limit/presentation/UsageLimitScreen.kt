@@ -98,6 +98,9 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Ambil data aplikasi yang diblokir
     val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
 
+    // Akses variableSessionProgress dari UsageLimitViewModel
+    val variableSessionProgress by usageLimitViewModel.variableSessionProgress.collectAsState()
+
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps by produceState(initialValue = mutableListOf<AppLimitInfo>(), dailyLimits, appUsageProgress) {
         value = dailyLimits.map { limit ->
@@ -390,7 +393,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                         icon = usageLimitViewModel.getAppIcon(context, session.packageName)!!,
                                         isBlocked = session.isActive,
                                         timeLimit = "${session.secondsLeft / 60}m ${session.secondsLeft % 60}s",
-                                        progress = if (session.isActive) 1f else 0f
+                                        progress = variableSessionProgress[session.packageName] ?: 0f
                                     )
                                 },
                                 showProgress = true,

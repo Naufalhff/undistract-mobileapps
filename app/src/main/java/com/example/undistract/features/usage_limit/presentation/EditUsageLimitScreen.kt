@@ -40,6 +40,8 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +63,13 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
             blockPermanentRepository = BlockPermanentRepository(
                 AppDatabase.getDatabase(context).blockPermanentDao()
             )
+        )
+    )
+
+    // Access VariableSessionViewModel
+    val variableSessionViewModel: VariableSessionViewModel = viewModel(
+        factory = VariableSessionViewModelFactory(
+            VariableSessionRepository(AppDatabase.getDatabase(context).variableSessionDao())
         )
     )
 
@@ -347,7 +356,7 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
 
                                 // Delete selected variable sessions
                                 variableSessionApps.filter { it.isBlocked }.forEach { app ->
-                                    usageLimitViewModel.deleteVariableSessionById(app.id.toString())
+                                    variableSessionViewModel.deleteVariableSession(app.packageName)
                                     deleteCount++
                                 }
 

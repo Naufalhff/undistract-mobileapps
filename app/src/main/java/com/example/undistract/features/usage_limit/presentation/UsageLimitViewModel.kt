@@ -59,6 +59,9 @@ class UsageLimitViewModel(
     private val _blockPermanentApps = MutableStateFlow<List<BlockPermanentEntity>>(emptyList())
     val blockPermanentApps: StateFlow<List<BlockPermanentEntity>> get() = _blockPermanentApps
 
+    private val _variableSessionProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val variableSessionProgress: StateFlow<Map<String, Float>> get() = _variableSessionProgress
+
     init {
         viewModelScope.launch {
             repository.getAll().collect { limits ->
@@ -86,6 +89,8 @@ class UsageLimitViewModel(
                 _blockPermanentApps.value = apps
             }
         }
+
+        startVariableSessionTracking()
     }
 
     fun initUsageTracking(context: Context) {
@@ -363,6 +368,30 @@ class UsageLimitViewModel(
             blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
                 // Update state if needed
             }
+        }
+    }
+
+    fun startVariableSessionTracking() {
+        viewModelScope.launch {
+            while (true) {
+                updateVariableSessionProgress()
+                delay(1000) // Update every second
+            }
+        }
+    }
+
+    private suspend fun updateVariableSessionProgress() {
+        withContext(Dispatchers.IO) {
+            val progressMap = mutableMapOf<String, Float>()
+            _variableSessions.value.forEach { session ->
+                if (session.isActive) {
+                    val progress = session.secondsLeft.toFloat() / (session.secondsLeft + session.coolDownDuration!!.toInt())
+                    progressMap[session.packageName] = progress
+                } else {
+                    progressMap[session.packageName] = 0f
+                }
+            }
+            _variableSessionProgress.value = progressMap
         }
     }
 }
