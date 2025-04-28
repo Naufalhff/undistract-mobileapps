@@ -19,4 +19,8 @@ interface BlockSchedulesDao {
 
     @Query("DELETE FROM block_schedules_table WHERE id = :id")
     suspend fun deleteBlockSchedules(id: Int)
+
+    @Query("UPDATE block_schedules_table SET isActive = :isActive WHERE id = :id")
+    suspend fun updateBlockScheduleActiveState(id: Int, isActive: Boolean)
 }
+

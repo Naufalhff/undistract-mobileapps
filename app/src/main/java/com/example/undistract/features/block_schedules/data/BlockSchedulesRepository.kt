@@ -35,4 +35,8 @@ class BlockSchedulesRepository(
     suspend fun deleteBlockSchedules(id: Int) {
         dao.deleteBlockSchedules(id)
     }
+
+    suspend fun updateBlockScheduleActiveState(id: Int, isActive: Boolean) {
+        dao.updateBlockScheduleActiveState(id, isActive)
+    }
 }
