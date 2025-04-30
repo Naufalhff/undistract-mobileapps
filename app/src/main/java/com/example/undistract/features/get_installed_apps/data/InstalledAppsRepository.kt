@@ -1,8 +1,7 @@
 package com.example.undistract.features.get_installed_apps.data
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
+import android.content.Intent
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 
 class InstalledAppsRepository(private val context: Context) {
@@ -10,24 +9,21 @@ class InstalledAppsRepository(private val context: Context) {
     fun getInstalledApps(): List<AppInfo> {
         val packageManager = context.packageManager
 
-        // List aplikasi sistem yang tetap akan ditampilkan
-        val allowedSystemApps = listOf(
-            "com.google.android.youtube",
-            "com.android.chrome",
-            // Tambah aplikasi lain (Tambahkan juga dalam query di Android Manifest)
-        )
+        // Intent untuk aplikasi yang dapat diluncurkan
+        val intent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
 
-        return packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { app ->
-                (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 || app.packageName in allowedSystemApps
-            }
-            .map { app ->
-                AppInfo(
-                    name = packageManager.getApplicationLabel(app).toString(),
-                    packageName = app.packageName,
-                    icon = app.loadIcon(packageManager)
-                )
-            }
-            .sortedBy { it.name }
+        // Mendapatkan aplikasi yang sesuai dengan intent
+        val resolvedApps = packageManager.queryIntentActivities(intent, 0)
+
+        return resolvedApps.map { resolveInfo ->
+            val appInfo = resolveInfo.activityInfo.applicationInfo
+            AppInfo(
+                name = packageManager.getApplicationLabel(appInfo).toString(),
+                packageName = appInfo.packageName,
+                icon = appInfo.loadIcon(packageManager)
+            )
+        }.sortedBy { it.name }
     }
 }
