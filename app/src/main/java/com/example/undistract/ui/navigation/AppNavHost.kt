@@ -17,7 +17,6 @@ import com.example.undistract.features.add_behavior.presentation.AddRestrictionS
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
-import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.profile.presentation.ProfileScreen
 import com.example.undistract.features.select_apps.data.SelectAppsRepository
 import com.example.undistract.features.select_apps.presentation.SelectAppsScreen
@@ -36,6 +35,10 @@ import com.example.undistract.navigation.SelectedAppsRouteObserver
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
+import com.example.undistract.features.parental_control.data.ParentalControlRepository
+import com.example.undistract.features.parental_control.presentation.ParentalControlViewModel
+import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
+import com.example.undistract.features.parental_control.presentation.PinVerificationScreen
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
@@ -54,12 +57,14 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val blockSchedulesDao = database.blockSchedulesDao()
     val variableSessionDao = database.variableSessionDao()
     val blockPermanentDao = database.blockPermanentDao()
+    val pinDao = database.pinDao()
 
     // Inisialisasi repository & dao
     val selectAppsRepository = remember { SelectAppsRepository() }
     val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
     val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
+    val parentalControlRepository = remember { ParentalControlRepository(pinDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
@@ -68,6 +73,7 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val blockSchedulesViewModel = BlockSchedulesViewModel(blockSchedulesRepository)
     val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
     val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
+    val parentalControlViewModel = ParentalControlViewModel(parentalControlRepository)
 
     // Observer untuk memantau perubahan rute
     SelectedAppsRouteObserver(navController, selectAppsViewModel)
@@ -81,7 +87,6 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
         "variable_session",
         "set_daily_limit",
         "editUsageLimit"
-
     )
 
     Scaffold(
@@ -108,7 +113,7 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 )
             }
             composable(BottomNavItem.ParentalControl.route) {
-                ParentalControlScreen(navController = navController, context = context)
+                PinVerificationScreen(navController = navController, viewModel = parentalControlViewModel)
             }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
@@ -173,6 +178,18 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     context = context,
                     navController = navController,
                     viewModel = selectAppsViewModel,
+                )
+            }
+
+            composable("pin_verification") {
+                PinVerificationScreen(
+                    navController = navController,
+                    viewModel = parentalControlViewModel,
+                )
+            }
+
+            composable("parental_control") {
+                ParentalControlScreen(
                 )
             }
         }

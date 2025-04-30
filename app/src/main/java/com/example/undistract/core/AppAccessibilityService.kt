@@ -59,10 +59,10 @@ class AppAccessibilityService : AccessibilityService() {
         }
         serviceInfo = info
 
-        // Cek apakah ini pertama kali setelah instalasi
-        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
-        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
-
+//        // Cek apakah ini pertama kali setelah instalasi
+//        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
+//        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
+//
 //        if (isFirstRun) {
 //            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
 //
