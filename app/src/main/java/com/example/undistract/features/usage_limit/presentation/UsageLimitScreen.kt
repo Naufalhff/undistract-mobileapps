@@ -92,6 +92,15 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Akses variableSessions dari UsageLimitViewModel
     val variableSessions by usageLimitViewModel.variableSessions.collectAsState()
 
+    // Akses blockPermanentApps dari UsageLimitViewModel
+    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
+
+    // Ambil data aplikasi yang diblokir
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
+
+    // Akses variableSessionProgress dari UsageLimitViewModel
+    val variableSessionProgress by usageLimitViewModel.variableSessionProgress.collectAsState()
+
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps by produceState(initialValue = mutableListOf<AppLimitInfo>(), dailyLimits, appUsageProgress) {
         value = dailyLimits.map { limit ->
@@ -150,18 +159,15 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     val isLoading by usageLimitViewModel.isLoading.collectAsState()
 
     // Check if there are any usage limits set
-    val hasNoLimits = limitedUsageApps.isEmpty()
+    val hasNoLimits = limitedUsageApps.isEmpty() &&
+            blockedApps.isEmpty() &&
+            variableSessions.isEmpty() &&
+            blockPermanentApps.isEmpty()
 
     // Pastikan untuk memanggil refreshUsageStats saat screen menjadi aktif
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
     }
-
-    // Ambil data aplikasi yang diblokir
-    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
-
-    // Akses blockPermanentApps dari UsageLimitViewModel
-    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
 
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->
@@ -331,10 +337,38 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                 fontWeight = FontWeight.SemiBold
                             )
 
-                            if (limitedUsageApps.isNotEmpty()) {
+                            // Tampilkan tombol "Edit" jika ada data di salah satu kategori
+                            if (limitedUsageApps.isNotEmpty() || blockedApps.isNotEmpty() || variableSessions.isNotEmpty() || blockPermanentApps.isNotEmpty()) {
                                 TextButton(onClick = {
                                     // Set data ke SharedViewModel
-                                    sharedViewModel.setAppLimitInfo(limitedUsageApps[0]) // Contoh: Mengirim aplikasi pertama
+                                    // Contoh: Mengirim aplikasi pertama dari kategori yang ada
+                                    val appToEdit = when {
+                                        limitedUsageApps.isNotEmpty() -> limitedUsageApps[0]
+                                        blockedApps.isNotEmpty() -> AppLimitInfo(
+                                            id = blockedApps[0].id,
+                                            appName = blockedApps[0].appName,
+                                            packageName = blockedApps[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, blockedApps[0].packageName)!!,
+                                            isBlocked = blockedApps[0].isActive,
+                                            timeLimit = "Blocked"
+                                        )
+                                        variableSessions.isNotEmpty() -> AppLimitInfo(
+                                            appName = variableSessions[0].appName,
+                                            packageName = variableSessions[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, variableSessions[0].packageName)!!,
+                                            isBlocked = variableSessions[0].isActive,
+                                            timeLimit = "${variableSessions[0].secondsLeft / 60}m ${variableSessions[0].secondsLeft % 60}s"
+                                        )
+                                        else -> AppLimitInfo(
+                                            id = blockPermanentApps[0].id,
+                                            appName = blockPermanentApps[0].appName,
+                                            packageName = blockPermanentApps[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, blockPermanentApps[0].packageName)!!,
+                                            isBlocked = blockPermanentApps[0].isActive,
+                                            timeLimit = "Permanently Blocked"
+                                        )
+                                    }
+                                    sharedViewModel.setAppLimitInfo(appToEdit)
                                     navController.navigate("editUsageLimit")
                                 }) {
                                     Text(
@@ -387,7 +421,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                         icon = usageLimitViewModel.getAppIcon(context, session.packageName)!!,
                                         isBlocked = session.isActive,
                                         timeLimit = "${session.secondsLeft / 60}m ${session.secondsLeft % 60}s",
-                                        progress = if (session.isActive) 1f else 0f
+                                        progress = variableSessionProgress[session.packageName] ?: 0f
                                     )
                                 },
                                 showProgress = true,
@@ -661,8 +695,9 @@ fun BlockedAppItem(
 
         Switch(
             checked = app.isActive,
-            onCheckedChange = { isChecked -> 
-                onToggleChange(isChecked) 
+            onCheckedChange = { isChecked ->
+                viewModel.toggleBlockSchedule(app.id, isChecked)
+                onToggleChange(isChecked)
             },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,

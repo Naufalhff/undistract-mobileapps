@@ -82,6 +82,12 @@ class VariableSessionViewModel(
         }
     }
 
+    fun deleteVariableSession(packageName: String) {
+        viewModelScope.launch {
+            repository.deleteVariableSessionById(packageName)
+        }
+    }
+
 //    fun deleteBlockSchedule(id: Int) {
 //        viewModelScope.launch {
 //            repository.deleteBlockSchedules(id)

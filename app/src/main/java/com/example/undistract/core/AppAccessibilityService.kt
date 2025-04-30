@@ -34,6 +34,50 @@ class AppAccessibilityService : AccessibilityService() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.d("ACCESSIBILITY_SERVICE", "Service connected")
+
+        // Inisialisasi database dan dao
+        val database = AppDatabase.getDatabase(this)
+        val blockSchedulesDao = database.blockSchedulesDao()
+        val variableSessionDao = database.variableSessionDao()
+        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
+
+        // Inisialisasi manager
+        blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
+        variableSessionManager = VariableSessionManager(this, variableSessionDao)
+        variableSessionRepository = VariableSessionRepository(variableSessionDao)
+        variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+        loadBlockedApps()
+
+        // Setup service info untuk accessibility service
+        val info = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            notificationTimeout = 100
+        }
+        serviceInfo = info
+
+        // Cek apakah ini pertama kali setelah instalasi
+        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
+        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
+
+//        if (isFirstRun) {
+//            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
+//
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                Log.d("ACCESSIBILITY_SERVICE", "Restarting service for better event detection")
+//                disableSelf()  // Menonaktifkan layanan sementara
+//            }, 1000)
+//
+//            sharedPreferences.edit().putBoolean("isFirstRun", false).apply()
+//        } else {
+//            Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
+//            sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
+//        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val context = this
 
@@ -127,50 +171,6 @@ class AppAccessibilityService : AccessibilityService() {
         Log.d("BlockApp", "Service terputus!")
     }
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
-
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-        Log.d("ACCESSIBILITY_SERVICE", "Service connected")
-
-        // Inisialisasi database dan dao
-        val database = AppDatabase.getDatabase(this)
-        val blockSchedulesDao = database.blockSchedulesDao()
-        val variableSessionDao = database.variableSessionDao()
-        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
-
-        // Inisialisasi manager
-        blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
-        variableSessionManager = VariableSessionManager(this, variableSessionDao)
-        variableSessionRepository = VariableSessionRepository(variableSessionDao)
-        variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
-        loadBlockedApps()
-
-        // Setup service info untuk accessibility service
-        val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            notificationTimeout = 100
-        }
-        serviceInfo = info
-
-        // Cek apakah ini pertama kali setelah instalasi
-        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
-        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
-
-        if (isFirstRun) {
-            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d("ACCESSIBILITY_SERVICE", "Restarting service for better event detection")
-                disableSelf()  // Menonaktifkan layanan sementara
-            }, 1000)
-
-            sharedPreferences.edit().putBoolean("isFirstRun", false).apply()
-        } else {
-            Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
-            sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
-        }
-    }
 
     private fun loadBlockedApps() {
         coroutineScope.launch {
