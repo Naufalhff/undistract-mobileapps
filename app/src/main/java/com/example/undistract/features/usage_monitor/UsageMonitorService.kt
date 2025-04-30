@@ -1,16 +1,20 @@
 package com.example.undistract.features.usage_monitor
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.example.undistract.MainActivity
 import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
@@ -19,6 +23,7 @@ import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitReposi
 import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
+import java.util.jar.Manifest
 
 class UsageMonitorService : Service() {
     private val TAG = "UsageMonitorService"
@@ -33,6 +38,9 @@ class UsageMonitorService : Service() {
 
     // Track which apps have already shown notifications today
     private val notifiedApps = mutableSetOf<String>()
+
+    // Tambahkan channel ID khusus untuk pop-up notification
+    private val POPUP_CHANNEL_ID = "popup_notification_channel"
 
     @SuppressLint("ForegroundServiceType")
     override fun onCreate() {
@@ -91,10 +99,15 @@ class UsageMonitorService : Service() {
 
                 // Check if usage has reached or exceeded the limit
                 if (usageTimeMinutes >= limit.timeLimitMinutes && !notifiedApps.contains(limit.packageName)) {
-                    // Show notification
-                    showLimitReachedNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
+                    // Show notification based on type
+                    when (limit.notificationType) {
+                        "Head Notification" -> showHeadNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
+                        "Pop Up Notification" -> showPopUpNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
+                        "Block Application" -> blockApplication(limit.appName, limit.packageName)
+                        else -> showHeadNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes) // Default
+                    }
                     notifiedApps.add(limit.packageName)
-                    Log.d(TAG, "Added ${limit.packageName} to notified apps")
+                    Log.d(TAG, "Added ${limit.packageName} to notified apps with type ${limit.notificationType}")
                 }
 
                 // Also notify at 90% of the limit as a warning
@@ -104,13 +117,16 @@ class UsageMonitorService : Service() {
                     notifiedApps.add(warningKey)
                     Log.d(TAG, "Added $warningKey to notified apps")
                 }
+
+                // Di dalam checkAppUsageLimits() sebelum pemilihan tipe notifikasi
+                Log.d(TAG, "Limit exceeded for ${limit.appName} with notification type: ${limit.notificationType}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app usage limits", e)
         }
     }
 
-    private fun showLimitReachedNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
+    private fun showHeadNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
         val notificationId = nextNotificationId++
 
         val usedHours = usageMinutes / 60
@@ -136,7 +152,33 @@ class UsageMonitorService : Service() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
 
-        Log.d(TAG, "Showed limit reached notification for $appName")
+        Log.d(TAG, "Showed head notification for $appName")
+    }
+
+    private fun showPopUpNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
+        try {
+            // Log untuk debug
+            Log.d(TAG, "Showing pop-up dialog for $appName")
+            
+            // Buat intent untuk membuka dialog Activity
+            val intent = Intent(this, TimeLimitDialogActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("APP_NAME", appName)
+                putExtra("PACKAGE_NAME", packageName)
+                putExtra("USAGE_MINUTES", usageMinutes)
+                putExtra("LIMIT_MINUTES", limitMinutes)
+            }
+            
+            // Tampilkan dialog
+            startActivity(intent)
+            
+            Log.d(TAG, "Successfully started TimeLimitDialogActivity")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing pop-up dialog", e)
+            
+            // Fallback to notification
+            showHeadNotification(appName, packageName, usageMinutes, limitMinutes)
+        }
     }
 
     private fun showLimitWarningNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
@@ -177,8 +219,42 @@ class UsageMonitorService : Service() {
         Log.d(TAG, "Showed limit warning notification for $appName")
     }
 
+    private fun blockApplication(appName: String, packageName: String) {
+        // Send a broadcast intent that can be intercepted by the Accessibility Service
+        // to block the application
+        val intent = Intent("com.example.undistract.BLOCK_APP")
+        intent.putExtra("packageName", packageName)
+        intent.putExtra("appName", appName)
+        sendBroadcast(intent)
+        
+        // Also show a notification informing the user
+        val notificationId = nextNotificationId++
+        
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, notificationIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.app_logo)
+            .setContentTitle("App Blocked")
+            .setContentText("$appName has been blocked as you've exceeded your daily limit.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(notificationId, notification)
+
+        Log.d(TAG, "Sent block request for $appName ($packageName)")
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Channel untuk notifikasi reguler
             val name = "Usage Limit Notifications"
             val descriptionText = "Notifications for app usage limits"
             val importance = NotificationManager.IMPORTANCE_HIGH
@@ -186,12 +262,27 @@ class UsageMonitorService : Service() {
                 description = descriptionText
                 enableVibration(true)
                 enableLights(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC // Tampilkan di lock screen
+            }
+
+            // Channel khusus untuk notifikasi pop-up dengan prioritas tertinggi
+            val popupChannelId = "popup_notification_channel"
+            val popupChannelName = "Pop-up Alerts"
+            val popupChannel = NotificationChannel(popupChannelId, popupChannelName, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Full screen alerts for usage limits"
+                enableVibration(true)
+                enableLights(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                // Khusus untuk pop-up notification
+                setBypassDnd(true) // Bypass Do Not Disturb
+                setShowBadge(true)
             }
 
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(popupChannel)
 
-            Log.d(TAG, "Created notification channel")
+            Log.d(TAG, "Created notification channels")
         }
     }
 

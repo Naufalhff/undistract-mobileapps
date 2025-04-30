@@ -45,7 +45,7 @@ import com.example.undistract.features.variable_session.presentation.VariableSes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+fun EditUsageLimitScreen(context: Context, navController: NavHostController) {
     val sharedViewModel: SharedViewModel = viewModel()
     val appLimitInfo by sharedViewModel.appLimitInfo.collectAsState()
 

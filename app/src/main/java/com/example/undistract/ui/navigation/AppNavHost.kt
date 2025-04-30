@@ -172,7 +172,6 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 EditUsageLimitScreen(
                     context = context,
                     navController = navController,
-                    viewModel = selectAppsViewModel,
                 )
             }
         }

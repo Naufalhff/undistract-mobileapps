@@ -10,5 +10,6 @@ data class SetaDailyLimitEntity(
     val packageName: String,
     val icon: String,
     val timeLimitMinutes: Int,
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val notificationType: String = "Head Notification", // Default is Head Notification
 )

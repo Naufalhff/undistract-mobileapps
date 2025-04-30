@@ -447,11 +447,14 @@ fun SetDailyUsageLimitScreen(
                                         R.drawable.app_logo.toString()
                                     }
 
+                                    Log.d("SetaDailyLimit", "Creating entity with notification type: ${viewModel.selectedNotificationType.value}")
+
                                     SetaDailyLimitEntity(
                                         appName = app.name,
                                         packageName = app.packageName,
                                         icon = iconString,
-                                        timeLimitMinutes = timeLimitMinutes
+                                        timeLimitMinutes = timeLimitMinutes,
+                                        notificationType = viewModel.selectedNotificationType.value
                                     )
                                 }
 
