@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class VariableSessionViewModel(
-    private val repository: VariableSessionRepository
+    private val repository: VariableSessionRepository,
+    private val isParental: Boolean = false
 ) : ViewModel() {
 
     private val _showDialog = MutableStateFlow(false)
@@ -34,7 +35,15 @@ class VariableSessionViewModel(
         isActive: Boolean
     ) {
         viewModelScope.launch {
-            repository.addVariableSessionForMultipleApps(apps, secondsLeft, coolDownDuration, coolDownEndTime, isOnCooldown, isActive)
+            repository.addVariableSessionForMultipleApps(
+                apps,
+                secondsLeft,
+                coolDownDuration,
+                coolDownEndTime,
+                isOnCooldown,
+                isActive,
+                isParental = isParental
+            )
         }
     }
 

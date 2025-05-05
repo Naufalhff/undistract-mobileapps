@@ -8,10 +8,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
@@ -38,7 +41,6 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 import com.example.undistract.features.parental_control.data.ParentalControlRepository
 import com.example.undistract.features.parental_control.presentation.ParentalControlViewModel
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
-import com.example.undistract.features.parental_control.presentation.PinVerificationScreen
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
@@ -70,8 +72,6 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
         factory = SelectAppsViewModelFactory(context, selectAppsRepository)
     )
-    val blockSchedulesViewModel = BlockSchedulesViewModel(blockSchedulesRepository)
-    val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
     val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
     val parentalControlViewModel = ParentalControlViewModel(parentalControlRepository)
 
@@ -80,13 +80,13 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
 
     // List rute yang tidak menggunakan navBar
     val routesWithoutNavBar = listOf(
-        "add_restriction",
+        "add_restriction?isParental={isParental}",
         "select_apps",
         "block_permanent",
         "block_schedules",
         "variable_session",
         "set_daily_limit",
-        "editUsageLimit"
+        "editUsageLimit?isParental={isParental}",
     )
 
     Scaffold(
@@ -113,15 +113,37 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 )
             }
             composable(BottomNavItem.ParentalControl.route) {
-                PinVerificationScreen(navController = navController, viewModel = parentalControlViewModel)
+                ParentalControlScreen(navController = navController, viewModel = parentalControlViewModel)
             }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
             }
-            composable("add_restriction") {
+            composable("parental_usage_limit?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                UsageLimitScreen(
+                    navController = navController,
+                    context = context,
+                    viewModel = selectAppsViewModel,
+                    isParental = isParental
+                )
+            }
+            composable("add_restriction?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 AddRestrictionScreen(
                     navController = navController,
-                    viewModel = selectAppsViewModel)
+                    viewModel = selectAppsViewModel,
+                    isParental = isParental,
+                )
             }
             composable("select_apps") {
                 SelectAppsScreen(
@@ -138,20 +160,34 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     blockPermanentViewModel = blockPermanentViewModel
                 )
             }
-            composable("block_schedules")
-            {
+
+            composable("block_schedules?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 BlockSchedulesScreen(
                     navController = navController,
-                    viewModel = blockSchedulesViewModel,
+                    isParental = isParental,
+                    repository = blockSchedulesRepository,
                     selectAppViewModel = selectAppsViewModel
                 )
             }
-            composable("variable_session")
-            {
+
+            composable("variable_session?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 VariableSessionScreen(
                     navController = navController,
-                    viewModel = variableSessionViewModel,
-                    selectAppViewModel = selectAppsViewModel
+                    repository = variableSessionRepository,
+                    selectAppViewModel = selectAppsViewModel,
+                    isParental = isParental
                 )
             }
 
@@ -163,7 +199,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                         ),
                         blockSchedulesRepository = blockSchedulesRepository, // Tambahkan ini
                         variableSessionRepository = variableSessionRepository,
-                        blockPermanentRepository = blockPermanentRepository
+                        blockPermanentRepository = blockPermanentRepository,
+                        isParental = false
                     )
                 )
                 SetDailyUsageLimitScreen(
@@ -172,24 +209,18 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     usageLimitViewModel = usageLimitViewModel
                 )
             }
-
-            composable("editUsageLimit") {
+            composable("editUsageLimit?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 EditUsageLimitScreen(
                     context = context,
                     navController = navController,
                     viewModel = selectAppsViewModel,
-                )
-            }
-
-            composable("pin_verification") {
-                PinVerificationScreen(
-                    navController = navController,
-                    viewModel = parentalControlViewModel,
-                )
-            }
-
-            composable("parental_control") {
-                ParentalControlScreen(
+                    isParental = isParental
                 )
             }
         }

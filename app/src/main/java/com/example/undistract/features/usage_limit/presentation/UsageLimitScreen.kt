@@ -59,9 +59,8 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+fun UsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel, isParental: Boolean = false) {
     val sharedViewModel: SharedViewModel = viewModel()
-
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
@@ -76,7 +75,8 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
             ),
             blockPermanentRepository = BlockPermanentRepository(
                 AppDatabase.getDatabase(context).blockPermanentDao()
-            )
+            ),
+            isParental = isParental
         )
     )
 
@@ -172,7 +172,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->
         sharedViewModel.setAppLimitInfo(app)
-        navController.navigate("editUsageLimit")
+        navController.navigate("editUsageLimit?isParental=$isParental")
     }
 
     Scaffold(
@@ -234,7 +234,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = { navController.navigate("add_restriction") },
+                        onClick = { navController.navigate("add_restriction?isParental=$isParental") },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Purple40,
                             contentColor = Color.White
@@ -291,7 +291,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                         )
 
                         Button(
-                            onClick = { navController.navigate("add_restriction") },
+                            onClick = { navController.navigate("add_restriction?isParental=$isParental") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
@@ -369,7 +369,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                         )
                                     }
                                     sharedViewModel.setAppLimitInfo(appToEdit)
-                                    navController.navigate("editUsageLimit")
+                                    navController.navigate("editUsageLimit?isParental=$isParental")
                                 }) {
                                     Text(
                                         text = "Edit",
@@ -548,13 +548,13 @@ fun AppLimitItem(
                 app.progress?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = it,
+                        progress = { it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
                         color = Purple40,
-                        trackColor = Color(0xFFE0D0FF)
+                        trackColor = Color(0xFFE0D0FF),
                     )
                 }
             }

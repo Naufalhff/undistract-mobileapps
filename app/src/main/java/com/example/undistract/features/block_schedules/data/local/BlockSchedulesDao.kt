@@ -11,6 +11,9 @@ interface BlockSchedulesDao {
     @Query("SELECT * FROM block_schedules_table")
     fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>>
 
+    @Query("SELECT * FROM block_schedules_table WHERE isParental = :isParental")
+    fun getSchedulesByParentalFlag(isParental: Boolean): Flow<List<BlockSchedulesEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBlockSchedules(data: BlockSchedulesEntity)
 

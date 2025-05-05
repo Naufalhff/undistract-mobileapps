@@ -9,11 +9,12 @@ import com.example.undistract.features.block_schedules.data.local.BlockSchedules
 import kotlinx.coroutines.launch
 
 class BlockSchedulesViewModel(
-    private val repository: BlockSchedulesRepository
+    private val repository: BlockSchedulesRepository,
+    private val isParental: Boolean
 ) : ViewModel() {
 
-    val blockedSchedules: LiveData<List<BlockSchedulesEntity>> = repository.getAllBlockSchedules()
-        .asLiveData()
+    val blockedSchedules: LiveData<List<BlockSchedulesEntity>> =
+        repository.getAllBlockSchedules(isParental).asLiveData()
 
     fun addBlockSchedules(
         apps: List<Pair<String, String>>,
@@ -24,7 +25,10 @@ class BlockSchedulesViewModel(
         isActive: Boolean
     ) {
         viewModelScope.launch {
-            repository.addBlockSchedulesForMultipleApps(apps, daysOfWeek, isAllDay, startTime, endTime, isActive)
+            repository.addBlockSchedulesForMultipleApps(
+                apps, daysOfWeek, isAllDay, startTime, endTime, isActive,
+                isParental = isParental
+            )
         }
     }
 
