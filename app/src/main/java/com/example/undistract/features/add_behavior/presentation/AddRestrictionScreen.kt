@@ -130,7 +130,7 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_permanently),
-                        onClick = { navController.navigate("block_permanent") }
+                        onClick = { navController.navigate("block_permanent?isParental=$isParental") }
                     )
 
                     FlexboxItem(

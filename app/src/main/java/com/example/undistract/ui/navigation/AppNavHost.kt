@@ -82,8 +82,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val routesWithoutNavBar = listOf(
         "add_restriction?isParental={isParental}",
         "select_apps",
-        "block_permanent",
-        "block_schedules",
+        "block_permanent?isParental={isParental}",
+        "block_schedules?isParental={isParental}",
         "variable_session",
         "set_daily_limit",
         "editUsageLimit?isParental={isParental}",
@@ -152,12 +152,19 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     viewModel = selectAppsViewModel
                 )
             }
-            composable("block_permanent")
-            {
+
+            composable("block_permanent?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 BlockPermanentScreen(
                     navController = navController,
                     selectAppsViewModel = selectAppsViewModel,
-                    blockPermanentViewModel = blockPermanentViewModel
+                    repository = blockPermanentRepository,
+                    isParental = isParental
                 )
             }
 

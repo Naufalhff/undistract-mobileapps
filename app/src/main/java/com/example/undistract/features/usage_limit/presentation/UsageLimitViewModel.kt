@@ -86,7 +86,7 @@ class UsageLimitViewModel(
         }
 
         viewModelScope.launch {
-            blockPermanentRepository.getAllBlockPermanent().collect { apps ->
+            blockPermanentRepository.getAllBlockPermanent(isParental).collect { apps ->
                 _blockPermanentApps.value = apps
             }
         }
