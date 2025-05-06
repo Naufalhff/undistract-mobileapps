@@ -72,7 +72,6 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
         factory = SelectAppsViewModelFactory(context, selectAppsRepository)
     )
-    val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
     val parentalControlViewModel = ParentalControlViewModel(parentalControlRepository)
 
     // Observer untuk memantau perubahan rute
