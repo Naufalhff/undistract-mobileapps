@@ -23,6 +23,6 @@ class UsageLimitViewModelFactory(
                 blockPermanentRepository
             ) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        throw IllegalArgumentException("Unknown ViewModel ass")
     }
 }

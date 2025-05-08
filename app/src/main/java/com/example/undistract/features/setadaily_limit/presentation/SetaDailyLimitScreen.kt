@@ -78,7 +78,7 @@ fun SetDailyUsageLimitScreen(
 
     // Time options lists
     val hoursOptions = remember { (0..23).map { "$it hrs" } }
-    val minutesOptions = remember { (0..55 step 5).map { "$it mins" } }
+    val minutesOptions = remember { (0..59).map { "$it mins" } }
 
     Column(
         modifier = Modifier

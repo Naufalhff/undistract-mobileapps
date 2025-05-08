@@ -39,6 +39,13 @@ class UsageStatsManager(private val context: Context) {
         context.startActivity(intent)
     }
 
+    // Fungsi untuk membersihkan cache untuk app tertentu
+    fun clearCacheFor(packageName: String) {
+        val hadCache = usageTimeCache.containsKey(packageName)
+        usageTimeCache.remove(packageName)
+        Log.d(TAG, "Cleared usage cache for: $packageName (had cache: $hadCache)")
+    }
+
     // Get today's usage time for a specific app in minutes
     suspend fun getAppUsageTimeToday(packageName: String): Long = withContext(Dispatchers.IO) {
         if (!hasUsageStatsPermission()) {
@@ -137,9 +144,12 @@ class UsageStatsManager(private val context: Context) {
         return "${usedHours}h ${usedMinutes}m / ${limitHours}h ${limitMinutesRemainder}m"
     }
 
-    // Clear cache
+    // Clear cache with more detailed logging
     fun clearCache() {
+        val cacheSize = usageTimeCache.size
+        val cacheItems = usageTimeCache.keys.joinToString(", ")
         usageTimeCache.clear()
+        Log.d(TAG, "Cleared all usage cache ($cacheSize items): $cacheItems")
     }
 
     // Reset notified apps at midnight

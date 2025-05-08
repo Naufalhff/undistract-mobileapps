@@ -16,6 +16,10 @@ import com.example.undistract.features.variable_session.data.VariableSessionRepo
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +34,8 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
+    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
+    private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
@@ -43,12 +49,14 @@ class AppAccessibilityService : AccessibilityService() {
         val blockSchedulesDao = database.blockSchedulesDao()
         val variableSessionDao = database.variableSessionDao()
         blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
+        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
 
         // Inisialisasi manager
         blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+        usageStatsManager = UsageStatsManager(this)
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -56,6 +64,7 @@ class AppAccessibilityService : AccessibilityService() {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             notificationTimeout = 100
+            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         }
         serviceInfo = info
 
@@ -95,7 +104,6 @@ class AppAccessibilityService : AccessibilityService() {
             Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
 
             serviceScope.launch {
-
                 // BLOCK ON SCHEDULES
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
                     withContext(Dispatchers.Main) {
@@ -162,6 +170,18 @@ class AppAccessibilityService : AccessibilityService() {
                     }
                 } else {
                     Log.d("AccessibilityService", "Blocked apps not initialized yet.")
+                }
+
+                // Check if the app has reached its daily limit
+                val limit = setaDailyLimitRepository.getByPackageName(packageName)
+                if (limit != null && usageStatsManager.hasReachedLimit(packageName, limit.timeLimitMinutes)) {
+                    withContext(Dispatchers.Main) {
+                        val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
+                            putExtra("APP_NAME", limit.appName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }
                 }
             }
         }

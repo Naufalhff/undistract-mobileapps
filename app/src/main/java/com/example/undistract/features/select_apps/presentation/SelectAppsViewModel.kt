@@ -3,6 +3,7 @@ package com.example.undistract.features.select_apps.presentation
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
@@ -26,8 +27,8 @@ class SelectAppsViewModel(
     // State map untuk UI
     val selectedApps = mutableStateMapOf<String, Boolean>()
 
-    private val _selectedNotificationType = MutableStateFlow("Head Notification")
-    val selectedNotificationType: StateFlow<String> = _selectedNotificationType.asStateFlow()
+    private val _selectedNotificationType = mutableStateOf("Head Notification")
+    val selectedNotificationType = _selectedNotificationType
 
     init {
         loadInstalledApps(appContext)
@@ -82,7 +83,6 @@ class SelectAppsViewModel(
     }
 
     fun updateSelectedNotificationType(type: String) {
-        Log.d("SelectAppsViewModel", "Notification type updated to: $type")
         _selectedNotificationType.value = type
     }
 }

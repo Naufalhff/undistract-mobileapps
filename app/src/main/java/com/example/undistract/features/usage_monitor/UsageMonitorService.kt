@@ -11,6 +11,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -21,6 +22,7 @@ import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.usage_stats.UsageStatsManager
+import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 import java.util.jar.Manifest
@@ -68,15 +70,26 @@ class UsageMonitorService : Service() {
     private fun startMonitoring() {
         serviceScope.launch {
             try {
+                // Tambahkan reset notifiedApps saat service mulai
+                notifiedApps.clear()
+                Log.d(TAG, "Cleared notified apps list on service start")
+
                 while (true) {
+                    Log.d(TAG, "Running usage check cycle")
                     checkAppUsageLimits()
-                    // Check every 30 seconds for more responsive notifications
-                    delay(30000)
+                    // Check every 15 seconds for more responsive notifications
+                    delay(15000)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in monitoring loop", e)
+                // Restart monitoring if it crashes
+                delay(5000)
+                startMonitoring()
             }
         }
+
+        // Pastikan reset notified apps juga berjalan
+        resetNotifiedAppsAtMidnight()
     }
 
     private suspend fun checkAppUsageLimits() {
@@ -99,31 +112,22 @@ class UsageMonitorService : Service() {
 
                 // Check if usage has reached or exceeded the limit
                 if (usageTimeMinutes >= limit.timeLimitMinutes && !notifiedApps.contains(limit.packageName)) {
-                    // Show notification based on type
-                    when (limit.notificationType) {
-                        "Head Notification" -> showHeadNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
-                        "Pop Up Notification" -> showPopUpNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
-                        "Block Application" -> blockApplication(limit.appName, limit.packageName)
-                        else -> showHeadNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes) // Default
-                    }
+                    // Show dialog pop-up
+                    showDailyLimitDialog(limit.appName)
                     notifiedApps.add(limit.packageName)
-                    Log.d(TAG, "Added ${limit.packageName} to notified apps with type ${limit.notificationType}")
                 }
-
-                // Also notify at 90% of the limit as a warning
-                val warningKey = "${limit.packageName}_warning"
-                if (progress >= 0.9f && progress < 1.0f && !notifiedApps.contains(warningKey)) {
-                    showLimitWarningNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
-                    notifiedApps.add(warningKey)
-                    Log.d(TAG, "Added $warningKey to notified apps")
-                }
-
-                // Di dalam checkAppUsageLimits() sebelum pemilihan tipe notifikasi
-                Log.d(TAG, "Limit exceeded for ${limit.appName} with notification type: ${limit.notificationType}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking app usage limits", e)
         }
+    }
+
+    private fun showDailyLimitDialog(appName: String) {
+        val intent = Intent(this, DailyLimitDialogActivity::class.java).apply {
+            putExtra("APP_NAME", appName)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(intent)
     }
 
     private fun showHeadNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
@@ -153,32 +157,6 @@ class UsageMonitorService : Service() {
         notificationManager.notify(notificationId, notification)
 
         Log.d(TAG, "Showed head notification for $appName")
-    }
-
-    private fun showPopUpNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
-        try {
-            // Log untuk debug
-            Log.d(TAG, "Showing pop-up dialog for $appName")
-            
-            // Buat intent untuk membuka dialog Activity
-            val intent = Intent(this, TimeLimitDialogActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("APP_NAME", appName)
-                putExtra("PACKAGE_NAME", packageName)
-                putExtra("USAGE_MINUTES", usageMinutes)
-                putExtra("LIMIT_MINUTES", limitMinutes)
-            }
-            
-            // Tampilkan dialog
-            startActivity(intent)
-            
-            Log.d(TAG, "Successfully started TimeLimitDialogActivity")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error showing pop-up dialog", e)
-            
-            // Fallback to notification
-            showHeadNotification(appName, packageName, usageMinutes, limitMinutes)
-        }
     }
 
     private fun showLimitWarningNotification(appName: String, packageName: String, usageMinutes: Long, limitMinutes: Int) {
@@ -226,10 +204,10 @@ class UsageMonitorService : Service() {
         intent.putExtra("packageName", packageName)
         intent.putExtra("appName", appName)
         sendBroadcast(intent)
-        
+
         // Also show a notification informing the user
         val notificationId = nextNotificationId++
-        
+
         val notificationIntent = Intent(this, MainActivity::class.java)
         notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         val pendingIntent = PendingIntent.getActivity(
