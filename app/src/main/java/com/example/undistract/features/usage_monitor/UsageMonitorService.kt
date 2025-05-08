@@ -105,6 +105,12 @@ class UsageMonitorService : Service() {
             }
 
             limits.filter { it.isActive }.forEach { limit ->
+                // Skip jika aplikasi yang sedang dibuka adalah Undistract
+                if (limit.packageName == this@UsageMonitorService.packageName) {
+                    Log.d(TAG, "Skipping Undistract app itself")
+                    return@forEach
+                }
+
                 val usageTimeMinutes = usageStatsManager.getAppUsageTimeToday(limit.packageName)
                 val progress = usageTimeMinutes.toFloat() / limit.timeLimitMinutes
 
@@ -112,9 +118,17 @@ class UsageMonitorService : Service() {
 
                 // Check if usage has reached or exceeded the limit
                 if (usageTimeMinutes >= limit.timeLimitMinutes && !notifiedApps.contains(limit.packageName)) {
-                    // Show dialog pop-up
-                    showDailyLimitDialog(limit.appName)
-                    notifiedApps.add(limit.packageName)
+                    // Verifikasi bahwa aplikasi yang sedang dibuka BUKAN Undistract sebelum menampilkan dialog
+                    val currentForegroundApp = usageStatsManager.getCurrentForegroundApp()
+
+                    if (currentForegroundApp != null && currentForegroundApp != this@UsageMonitorService.packageName) {
+                        // Show dialog pop-up hanya jika aplikasi yang sedang dibuka bukan Undistract
+                        showDailyLimitDialog(limit.appName, limit.packageName)
+                        notifiedApps.add(limit.packageName)
+                        Log.d(TAG, "Showing limit dialog for ${limit.appName} when foreground app is $currentForegroundApp")
+                    } else {
+                        Log.d(TAG, "Skipping dialog for ${limit.appName} because Undistract is in foreground")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -122,9 +136,10 @@ class UsageMonitorService : Service() {
         }
     }
 
-    private fun showDailyLimitDialog(appName: String) {
+    private fun showDailyLimitDialog(appName: String, packageName: String) {
         val intent = Intent(this, DailyLimitDialogActivity::class.java).apply {
             putExtra("APP_NAME", appName)
+            putExtra("PACKAGE_NAME", packageName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)

@@ -46,6 +46,41 @@ class UsageStatsManager(private val context: Context) {
         Log.d(TAG, "Cleared usage cache for: $packageName (had cache: $hadCache)")
     }
 
+    fun getCurrentForegroundApp(): String? {
+        if (!hasUsageStatsPermission()) {
+            return null
+        }
+
+        try {
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+            val time = System.currentTimeMillis()
+            // Ambil data penggunaan 5 detik terakhir
+            val stats = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                time - 5 * 1000, // 5 detik yang lalu
+                time
+            )
+
+            if (stats != null) {
+                var lastUsedApp: android.app.usage.UsageStats? = null
+                var lastUsedTime = 0L
+
+                for (usageStats in stats) {
+                    if (usageStats.lastTimeUsed > lastUsedTime) {
+                        lastUsedTime = usageStats.lastTimeUsed
+                        lastUsedApp = usageStats
+                    }
+                }
+
+                return lastUsedApp?.packageName
+            }
+        } catch (e: Exception) {
+            Log.e("UsageStatsManager", "Error getting current foreground app", e)
+        }
+
+        return null
+    }
+
     // Get today's usage time for a specific app in minutes
     suspend fun getAppUsageTimeToday(packageName: String): Long = withContext(Dispatchers.IO) {
         if (!hasUsageStatsPermission()) {

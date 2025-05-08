@@ -103,6 +103,12 @@ class AppAccessibilityService : AccessibilityService() {
 
             Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
 
+            // Skip jika aplikasi yang dibuka adalah Undistract
+            if (packageName == context.packageName) {
+                Log.d("DEBUG_ACCESSIBILITY", "Aplikasi Undistract dibuka, skip dialog")
+                return
+            }
+
             serviceScope.launch {
                 // BLOCK ON SCHEDULES
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
@@ -175,12 +181,18 @@ class AppAccessibilityService : AccessibilityService() {
                 // Check if the app has reached its daily limit
                 val limit = setaDailyLimitRepository.getByPackageName(packageName)
                 if (limit != null && usageStatsManager.hasReachedLimit(packageName, limit.timeLimitMinutes)) {
-                    withContext(Dispatchers.Main) {
-                        val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
-                            putExtra("APP_NAME", limit.appName)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    // Hanya tampilkan dialog jika aplikasi yang dibuka bukan Undistract
+                    if (packageName != context.packageName) {
+                        withContext(Dispatchers.Main) {
+                            val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
+                                putExtra("APP_NAME", limit.appName)
+                                putExtra("PACKAGE_NAME", packageName)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
+                    } else {
+                        Log.d("AccessibilityService", "Skipping daily limit dialog for Undistract app itself")
                     }
                 }
             }

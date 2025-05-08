@@ -1,9 +1,8 @@
 package com.example.undistract.features.usage_limit.presentation
 
-import android.app.ActivityManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -20,11 +19,20 @@ import com.example.undistract.ui.theme.Purple40
 class DailyLimitDialogActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Cek apakah aplikasi yang mencapai batas adalah Undistract
+        val packageName = intent.getStringExtra("PACKAGE_NAME")
+        if (packageName == this.packageName) {
+            Log.d("DailyLimitDialogActivity", "Aplikasi Undistract mencapai batas, tutup aktivitas")
+            finish()
+            return
+        }
+
         setContent {
             DailyLimitDialogContent(
                 appName = intent.getStringExtra("APP_NAME") ?: "this app",
                 onDismiss = {
-                    closeApp(intent.getStringExtra("PACKAGE_NAME"))
+                    closeApp(packageName)
                     finish()
                 }
             )
@@ -33,8 +41,11 @@ class DailyLimitDialogActivity : ComponentActivity() {
 
     private fun closeApp(packageName: String?) {
         if (packageName != null) {
-            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            activityManager.killBackgroundProcesses(packageName)
+            // Arahkan pengguna ke layar beranda (home screen)
+            val homeIntent = Intent(Intent.ACTION_MAIN)
+            homeIntent.addCategory(Intent.CATEGORY_HOME)
+            homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(homeIntent)
         }
     }
 }
