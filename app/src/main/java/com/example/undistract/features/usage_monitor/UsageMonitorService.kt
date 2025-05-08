@@ -104,10 +104,16 @@ class UsageMonitorService : Service() {
                 repository.getAllSync()
             }
 
-            limits.filter { it.isActive }.forEach { limit ->
+            limits.forEach { limit ->
                 // Skip jika aplikasi yang sedang dibuka adalah Undistract
                 if (limit.packageName == this@UsageMonitorService.packageName) {
                     Log.d(TAG, "Skipping Undistract app itself")
+                    return@forEach
+                }
+
+                // Periksa apakah toggle untuk aplikasi ini aktif
+                if (!limit.isActive) {
+                    Log.d(TAG, "Skipping ${limit.appName} because toggle is off")
                     return@forEach
                 }
 
@@ -121,13 +127,34 @@ class UsageMonitorService : Service() {
                     // Verifikasi bahwa aplikasi yang sedang dibuka BUKAN Undistract sebelum menampilkan dialog
                     val currentForegroundApp = usageStatsManager.getCurrentForegroundApp()
 
-                    if (currentForegroundApp != null && currentForegroundApp != this@UsageMonitorService.packageName) {
-                        // Show dialog pop-up hanya jika aplikasi yang sedang dibuka bukan Undistract
-                        showDailyLimitDialog(limit.appName, limit.packageName)
+                    if (currentForegroundApp != null) {
+                        // Handle notification based on the notification type
+                        when (limit.notificationType) {
+                            "Head Notification" -> {
+                                // Hanya tampilkan push notification untuk Head Notification
+                                showHeadNotification(limit.appName, limit.packageName, usageTimeMinutes, limit.timeLimitMinutes)
+                            }
+                            "Pop Up Notification" -> {
+                                // Pop Up Notification hanya muncul jika aplikasi aktif bukan Undistract
+                                if (currentForegroundApp != this@UsageMonitorService.packageName) {
+                                    showDailyLimitDialog(limit.appName, limit.packageName)
+                                } else {
+                                    Log.d(TAG, "Skipping pop-up for ${limit.appName} because Undistract is in foreground")
+                                }
+                            }
+                            "Block Application" -> {
+                                // Block Application hanya berlaku jika aplikasi aktif bukan Undistract
+                                if (currentForegroundApp != this@UsageMonitorService.packageName) {
+                                    blockApplication(limit.appName, limit.packageName)
+                                } else {
+                                    Log.d(TAG, "Skipping block for ${limit.appName} because Undistract is in foreground")
+                                }
+                            }
+                        }
                         notifiedApps.add(limit.packageName)
-                        Log.d(TAG, "Showing limit dialog for ${limit.appName} when foreground app is $currentForegroundApp")
+                        Log.d(TAG, "Handled limit for ${limit.appName} with notification type: ${limit.notificationType}")
                     } else {
-                        Log.d(TAG, "Skipping dialog for ${limit.appName} because Undistract is in foreground")
+                        Log.d(TAG, "Skipping notification for ${limit.appName} because no foreground app detected")
                     }
                 }
             }
@@ -213,36 +240,41 @@ class UsageMonitorService : Service() {
     }
 
     private fun blockApplication(appName: String, packageName: String) {
-        // Send a broadcast intent that can be intercepted by the Accessibility Service
-        // to block the application
+        // Kirim broadcast untuk memblokir aplikasi
         val intent = Intent("com.example.undistract.BLOCK_APP")
         intent.putExtra("packageName", packageName)
         intent.putExtra("appName", appName)
         sendBroadcast(intent)
 
-        // Also show a notification informing the user
-        val notificationId = nextNotificationId++
+        // Tampilkan notifikasi bahwa aplikasi diblokir
+        showBlockedNotification(appName, packageName)
 
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
+        // Tutup aplikasi yang sedang berjalan
+        closeApplication(packageName)
+    }
+
+    private fun closeApplication(packageName: String) {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
+    }
+
+    private fun showBlockedNotification(appName: String, packageName: String) {
+        val notificationId = nextNotificationId++
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.app_logo)
             .setContentTitle("App Blocked")
             .setContentText("$appName has been blocked as you've exceeded your daily limit.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
 
-        Log.d(TAG, "Sent block request for $appName ($packageName)")
+        Log.d(TAG, "Showed blocked notification for $appName")
     }
 
     private fun createNotificationChannel() {

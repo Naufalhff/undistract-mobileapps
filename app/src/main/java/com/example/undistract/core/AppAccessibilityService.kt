@@ -181,18 +181,41 @@ class AppAccessibilityService : AccessibilityService() {
                 // Check if the app has reached its daily limit
                 val limit = setaDailyLimitRepository.getByPackageName(packageName)
                 if (limit != null && usageStatsManager.hasReachedLimit(packageName, limit.timeLimitMinutes)) {
-                    // Hanya tampilkan dialog jika aplikasi yang dibuka bukan Undistract
-                    if (packageName != context.packageName) {
-                        withContext(Dispatchers.Main) {
-                            val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
-                                putExtra("APP_NAME", limit.appName)
-                                putExtra("PACKAGE_NAME", packageName)
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    // Hanya tampilkan dialog jika aplikasi yang dibuka bukan Undistract dan toggle aktif
+                    if (packageName != context.packageName && limit.isActive) {
+                        // Ubah bagian ini untuk memeriksa tipe notifikasi
+                        when (limit.notificationType) {
+                            "Block Application" -> {
+                                // Block the application and return to home
+                                val intent = Intent(Intent.ACTION_MAIN)
+                                intent.addCategory(Intent.CATEGORY_HOME)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                startActivity(intent)
+                                Log.d("AccessibilityService", "Blocked application: ${limit.appName}")
+
+                                // Tampilkan pesan "App Blocked"
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "App ${limit.appName} is blocked!", Toast.LENGTH_LONG).show()
+                                }
                             }
-                            context.startActivity(intent)
+                            "Pop Up Notification" -> {
+                                // Only show dialog for Pop Up Notification type
+                                withContext(Dispatchers.Main) {
+                                    val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
+                                        putExtra("APP_NAME", limit.appName)
+                                        putExtra("PACKAGE_NAME", packageName)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                            "Head Notification" -> {
+                                // Skip dialog for Head Notification - UsageMonitorService will handle this
+                                Log.d("AccessibilityService", "Skipping dialog for Head Notification type: ${limit.appName}")
+                            }
                         }
                     } else {
-                        Log.d("AccessibilityService", "Skipping daily limit dialog for Undistract app itself")
+                        Log.d("AccessibilityService", "Skipping daily limit dialog for Undistract app itself or toggle is off")
                     }
                 }
             }
