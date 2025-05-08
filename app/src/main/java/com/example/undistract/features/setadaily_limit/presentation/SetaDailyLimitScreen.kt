@@ -474,7 +474,7 @@ fun SetDailyUsageLimitScreen(
                                                         // Use a safer navigation approach
                                                         try {
                                                             // Navigate after a short delay to ensure the snackbar is shown
-                                                            delay(500)
+
                                                             navController.navigate(BottomNavItem.UsageLimit.route) {
                                                                 // Use a simpler navigation with fewer options
                                                                 popUpTo(navController.graph.startDestinationId)

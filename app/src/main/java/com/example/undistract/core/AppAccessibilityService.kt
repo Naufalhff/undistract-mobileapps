@@ -187,11 +187,11 @@ class AppAccessibilityService : AccessibilityService() {
                         when (limit.notificationType) {
                             "Block Application" -> {
                                 // Block the application and return to home
+                                Log.d("AccessibilityService", "Blocking application: ${limit.appName}")
                                 val intent = Intent(Intent.ACTION_MAIN)
                                 intent.addCategory(Intent.CATEGORY_HOME)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
-                                Log.d("AccessibilityService", "Blocked application: ${limit.appName}")
 
                                 // Tampilkan pesan "App Blocked"
                                 withContext(Dispatchers.Main) {
