@@ -29,16 +29,26 @@ import com.example.undistract.ui.theme.ColorNew
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.ui.components.BackButton
 
 @Composable
-fun VariableSessionScreen(navController: NavController, viewModel: VariableSessionViewModel, selectAppViewModel: SelectAppsViewModel) {
+fun VariableSessionScreen(
+    navController: NavController,
+    repository: VariableSessionRepository,
+    selectAppViewModel: SelectAppsViewModel,
+    isParental: Boolean
+) {
     val context = LocalContext.current
+    val viewModel: VariableSessionViewModel = viewModel(
+        factory = VariableSessionViewModelFactory(repository, isParental)
+    )
 
     var showDialog by remember { mutableStateOf(false) }
     var isOn by remember { mutableStateOf("Off") }

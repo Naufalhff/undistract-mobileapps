@@ -23,18 +23,25 @@ fun BottomNavigationBar(navController: NavController) {
         val currentRoute = navBackStackEntry?.destination?.route
 
         items.forEach { item ->
-            val color = if (currentRoute == item.route) Color(92, 38, 161) else Color(153, 153, 153)
+            // Menambahkan pengecekan khusus untuk ParentalControl
+            val color = when {
+                currentRoute == item.route -> Color(92, 38, 161)
+                item.route == BottomNavItem.ParentalControl.route && (currentRoute?.contains("parentalControl") == true || currentRoute?.contains("parental_usage_limit") == true) -> Color(92, 38, 161)
+                else -> Color(153, 153, 153)
+            }
+
+            val isSelected = currentRoute == item.route || (item.route == BottomNavItem.ParentalControl.route && (currentRoute?.contains("parentalControl") == true || currentRoute?.contains("parental_usage_limit") == true))
 
             NavigationBarItem(
                 icon = { Icon(painterResource(item.icon), contentDescription = item.title, tint = color) },
                 label = { Text(item.title, color = color) },
                 modifier = Modifier.size(36.dp),
-                selected = currentRoute == item.route,
+                selected = isSelected,
                 onClick = {
                     navController.navigate(item.route) {
                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                         launchSingleTop = true
-                        restoreState = true
+                        restoreState = false
                     }
                 }
             )

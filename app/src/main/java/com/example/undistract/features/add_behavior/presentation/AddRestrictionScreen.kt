@@ -1,5 +1,6 @@
 package com.example.undistract.features.add_behavior.presentation
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,10 +45,11 @@ import com.example.undistract.ui.navigation.BottomNavItem
 @Composable
 fun AddRestrictionScreen(
     navController: NavHostController,
-    viewModel: SelectAppsViewModel
+    viewModel: SelectAppsViewModel,
+    isParental: Boolean = false
 ) {
     viewModel.updateCurrentRoute("add_restriction")
-    
+
     // For dropdown state
     var expanded by remember { mutableStateOf(false) }
     var selectedOption by remember { mutableStateOf("Head Notification") }
@@ -70,7 +72,13 @@ fun AddRestrictionScreen(
         ) {
             BackButton (
                 modifier = Modifier.size(24.dp),
-                onClick = { navController.navigate(BottomNavItem.UsageLimit.route)}
+                onClick = {
+                    if (isParental){
+                        navController.navigate("parental_usage_limit?isParental=true")
+                    } else {
+                        navController.navigate(BottomNavItem.UsageLimit.route)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -128,13 +136,13 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_permanently),
-                        onClick = { navController.navigate("block_permanent") }
+                        onClick = { navController.navigate("block_permanent?isParental=$isParental") }
                     )
 
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_on_a_schedule),
-                        onClick = { navController.navigate("block_schedules") }
+                        onClick = { navController.navigate("block_schedules?isParental=$isParental") }
                     )
                 }
 
@@ -154,12 +162,12 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.apply_custom_session_restriction),
-                        onClick = { navController.navigate("variable_session") }
+                        onClick = { navController.navigate("variable_session?isParental=$isParental") }
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // DISRUPTION OPTIONS DROPDOWN
                 Column(
                     modifier = Modifier
@@ -173,7 +181,7 @@ fun AddRestrictionScreen(
                         fontSize = 15.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -199,7 +207,7 @@ fun AddRestrictionScreen(
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 14.sp
                             )
-                            
+
                             Icon(
                                 imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Dropdown",
@@ -207,7 +215,7 @@ fun AddRestrictionScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        
+
                         androidx.compose.material3.DropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false },
@@ -217,12 +225,12 @@ fun AddRestrictionScreen(
                         ) {
                             options.forEach { option ->
                                 androidx.compose.material3.DropdownMenuItem(
-                                    text = { 
+                                    text = {
                                         Text(
                                             text = option,
                                             color = MaterialTheme.colorScheme.onPrimary,
                                             fontSize = 14.sp
-                                        ) 
+                                        )
                                     },
                                     onClick = {
                                         selectedOption = option

@@ -32,7 +32,8 @@ class UsageLimitViewModel(
     private val repository: SetaDailyLimitRepository,
     private val blockSchedulesRepository: BlockSchedulesRepository,
     private val variableSessionRepository: VariableSessionRepository,
-    private val blockPermanentRepository: BlockPermanentRepository
+    private val blockPermanentRepository: BlockPermanentRepository,
+    private val isParental: Boolean
 ) : ViewModel() {
     private val TAG = "UsageLimitViewModel"
 
@@ -51,7 +52,7 @@ class UsageLimitViewModel(
     private var trackingJob: kotlinx.coroutines.Job? = null
 
     // Tambahkan Flow untuk blockedApps
-    val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules()
+    val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules(isParental)
 
     private val _variableSessions = MutableStateFlow<List<VariableSessionEntity>>(emptyList())
     val variableSessions: StateFlow<List<VariableSessionEntity>> get() = _variableSessions
@@ -79,13 +80,13 @@ class UsageLimitViewModel(
         }
 
         viewModelScope.launch {
-            variableSessionRepository.getAllVariableSession().collect { sessions ->
+            variableSessionRepository.getAllVariableSession(isParental).collect { sessions ->
                 _variableSessions.value = sessions
             }
         }
 
         viewModelScope.launch {
-            blockPermanentRepository.getAllBlockPermanent().collect { apps ->
+            blockPermanentRepository.getAllBlockPermanent(isParental).collect { apps ->
                 _blockPermanentApps.value = apps
             }
         }
@@ -351,7 +352,7 @@ class UsageLimitViewModel(
 
     fun refreshVariableSessions() {
         viewModelScope.launch {
-            variableSessionRepository.getAllVariableSession().collect { sessions ->
+            variableSessionRepository.getAllVariableSession(isParental).collect { sessions ->
                 // Update state if needed
             }
         }

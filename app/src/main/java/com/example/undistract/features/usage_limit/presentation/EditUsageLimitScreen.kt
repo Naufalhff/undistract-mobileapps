@@ -45,7 +45,7 @@ import com.example.undistract.features.variable_session.presentation.VariableSes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditUsageLimitScreen(context: Context, navController: NavHostController) {
+fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel, isParental: Boolean = false) {
     val sharedViewModel: SharedViewModel = viewModel()
     val appLimitInfo by sharedViewModel.appLimitInfo.collectAsState()
 
@@ -62,14 +62,16 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController) {
             ),
             blockPermanentRepository = BlockPermanentRepository(
                 AppDatabase.getDatabase(context).blockPermanentDao()
-            )
+            ),
+            isParental = isParental
         )
     )
 
     // Access VariableSessionViewModel
     val variableSessionViewModel: VariableSessionViewModel = viewModel(
         factory = VariableSessionViewModelFactory(
-            VariableSessionRepository(AppDatabase.getDatabase(context).variableSessionDao())
+            VariableSessionRepository(AppDatabase.getDatabase(context).variableSessionDao()),
+            isParental
         )
     )
 

@@ -26,7 +26,7 @@ class BlockPermanentRepository (private val dao: BlockPermanentDao) {
         dao.deleteBlockPermanent(id)
     }
 
-    fun getAllBlockPermanent(): Flow<List<BlockPermanentEntity>> {
-        return dao.getAllBlockPermanent()
+    fun getAllBlockPermanent(isParental: Boolean = false): Flow<List<BlockPermanentEntity>> {
+        return dao.getBlockPermanentByParentalFlag(isParental)
     }
 }

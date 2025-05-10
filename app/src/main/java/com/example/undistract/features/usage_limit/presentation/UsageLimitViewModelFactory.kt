@@ -11,7 +11,8 @@ class UsageLimitViewModelFactory(
     private val repository: SetaDailyLimitRepository,
     private val blockSchedulesRepository: BlockSchedulesRepository,
     private val variableSessionRepository: VariableSessionRepository,
-    private val blockPermanentRepository: BlockPermanentRepository
+    private val blockPermanentRepository: BlockPermanentRepository,
+    private val isParental: Boolean
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(UsageLimitViewModel::class.java)) {
@@ -20,7 +21,8 @@ class UsageLimitViewModelFactory(
                 repository,
                 blockSchedulesRepository,
                 variableSessionRepository,
-                blockPermanentRepository
+                blockPermanentRepository,
+                isParental = isParental
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel ass")

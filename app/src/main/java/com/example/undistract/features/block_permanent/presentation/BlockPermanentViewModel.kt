@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
-class BlockPermanentViewModel (private val repository: BlockPermanentRepository) : ViewModel() {
+class BlockPermanentViewModel (
+    private val repository: BlockPermanentRepository,
+    private val isParental: Boolean
+) : ViewModel() {
 
     fun insertBlockPermanent(data: BlockPermanentEntity) {
         viewModelScope.launch {

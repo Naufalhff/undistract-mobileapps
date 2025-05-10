@@ -9,7 +9,9 @@ class VariableSessionRepository(
     private val dao: VariableSessionDao
 )  {
 
-    fun getAllVariableSession(): Flow<List<VariableSessionEntity>> = dao.getAllVariableSession()
+    fun getAllVariableSession(isParental: Boolean = false): Flow<List<VariableSessionEntity>> {
+        return dao.getVariableSessionByParentalFlag(isParental)
+    }
 
     suspend fun getVariableSession(packageName: String): List<VariableSessionEntity> {
         return dao.getVariableSession(packageName)
@@ -21,7 +23,8 @@ class VariableSessionRepository(
         coolDownDuration: Long?,
         coolDownEndTime: Long?,
         isOnCoolDown: Boolean,
-        isActive: Boolean
+        isActive: Boolean,
+        isParental: Boolean
     ) {
         for (app in apps) {
             val variableSession = VariableSessionEntity(
@@ -32,6 +35,7 @@ class VariableSessionRepository(
                 coolDownEndTime = coolDownEndTime,
                 isOnCoolDown = isOnCoolDown,
                 isActive = isActive,
+                isParental = isParental
 
             )
             dao.insertVariableSession(variableSession)

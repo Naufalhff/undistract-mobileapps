@@ -5,13 +5,14 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 
 class BlockPermanentViewModelFactory(
-    private val repository: BlockPermanentRepository
+    private val repository: BlockPermanentRepository,
+    private val isParental: Boolean
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BlockPermanentViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return BlockPermanentViewModel(repository) as T
+            return BlockPermanentViewModel(repository, isParental) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
