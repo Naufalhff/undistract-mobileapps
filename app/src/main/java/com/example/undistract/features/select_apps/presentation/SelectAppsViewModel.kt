@@ -27,8 +27,8 @@ class SelectAppsViewModel(
     // State map untuk UI
     val selectedApps = mutableStateMapOf<String, Boolean>()
 
-    private val _selectedNotificationType = mutableStateOf("Head Notification")
-    val selectedNotificationType = _selectedNotificationType
+    private val _selectedNotificationType = MutableStateFlow("Head Notification")
+    val selectedNotificationType: StateFlow<String> = _selectedNotificationType.asStateFlow()
 
     init {
         loadInstalledApps(appContext)
@@ -82,7 +82,7 @@ class SelectAppsViewModel(
         }
     }
 
-    fun updateSelectedNotificationType(type: String) {
-        _selectedNotificationType.value = type
+    fun updateSelectedNotificationType(notificationType: String) {
+        _selectedNotificationType.value = notificationType
     }
 }

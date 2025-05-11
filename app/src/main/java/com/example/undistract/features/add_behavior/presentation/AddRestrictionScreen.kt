@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,11 @@ fun AddRestrictionScreen(
     var expanded by remember { mutableStateOf(false) }
     var selectedOption by remember { mutableStateOf("Head Notification") }
     val options = listOf("Head Notification", "Pop Up Notification", "Block Application")
+
+    // Update selected notification type in ViewModel
+    LaunchedEffect(selectedOption) {
+        viewModel.updateSelectedNotificationType(selectedOption)
+    }
 
     Column (
         modifier = Modifier
@@ -162,7 +168,10 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.apply_custom_session_restriction),
-                        onClick = { navController.navigate("variable_session?isParental=$isParental") }
+                        onClick = { 
+                            navController.navigate("variable_session?isParental=$isParental") 
+                            viewModel.updateSelectedNotificationType(selectedOption)
+                        }
                     )
                 }
 

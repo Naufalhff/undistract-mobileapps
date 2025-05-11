@@ -17,4 +17,3 @@ data class VariableSessionEntity(
     val isActive: Boolean,
     val isParental: Boolean
 )
-

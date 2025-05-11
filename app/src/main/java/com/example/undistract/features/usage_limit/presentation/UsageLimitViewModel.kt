@@ -402,4 +402,12 @@ class UsageLimitViewModel(
             }
         }
     }
+
+    private fun calculateProgress(usedTime: Long, totalTime: Long): Float {
+        return if (totalTime > 0) {
+            (usedTime.toFloat() / totalTime.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+    }
 }
