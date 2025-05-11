@@ -198,4 +198,140 @@ class UsageStatsManager(private val context: Context) {
         val usageTimeMinutes = getAppUsageTimeToday(packageName)
         return usageTimeMinutes >= limitMinutes
     }
+
+    fun getDetailedAppUsageToday(): Map<String, Long> {
+        if (!hasUsageStatsPermission()) {
+            return emptyMap()
+        }
+        
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+        
+        return try {
+            val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+            val appUsageMap = mutableMapOf<String, Long>()
+            val lastEventTimeMap = mutableMapOf<String, Long>()
+            val appForegroundMap = mutableMapOf<String, Boolean>()
+            
+            val event = android.app.usage.UsageEvents.Event()
+            
+            while (usageEvents.hasNextEvent()) {
+                usageEvents.getNextEvent(event)
+                val packageName = event.packageName
+                
+                when (event.eventType) {
+                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        lastEventTimeMap[packageName] = event.timeStamp
+                        appForegroundMap[packageName] = true
+                    }
+                    android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED -> {
+                        if (appForegroundMap[packageName] == true) {
+                            val lastEventTime = lastEventTimeMap[packageName] ?: continue
+                            val usageTime = event.timeStamp - lastEventTime
+                            appUsageMap[packageName] = (appUsageMap[packageName] ?: 0) + usageTime
+                            appForegroundMap[packageName] = false
+                        }
+                    }
+                }
+            }
+            
+            // Handle still-running apps
+            val currentTime = System.currentTimeMillis()
+            appForegroundMap.forEach { (packageName, isForeground) ->
+                if (isForeground) {
+                    val lastEventTime = lastEventTimeMap[packageName] ?: return@forEach
+                    val usageTime = currentTime - lastEventTime
+                    appUsageMap[packageName] = (appUsageMap[packageName] ?: 0) + usageTime
+                }
+            }
+            
+            appUsageMap
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting detailed app usage", e)
+            emptyMap()
+        }
+    }
+
+    fun getHourlyUsageToday(): Map<Int, Long> {
+        if (!hasUsageStatsPermission()) {
+            return emptyMap()
+        }
+
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        try {
+            val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+            val hourlyUsageMap = mutableMapOf<Int, Long>()
+            val lastEventTimeMap = mutableMapOf<String, Long>()
+            val appForegroundMap = mutableMapOf<String, Boolean>()
+
+            val event = android.app.usage.UsageEvents.Event()
+
+            while (usageEvents.hasNextEvent()) {
+                usageEvents.getNextEvent(event)
+                val packageName = event.packageName
+
+                when (event.eventType) {
+                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        lastEventTimeMap[packageName] = event.timeStamp
+                        appForegroundMap[packageName] = true
+                    }
+                    android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED -> {
+                        if (appForegroundMap[packageName] == true) {
+                            val lastEventTime = lastEventTimeMap[packageName] ?: continue
+                            val usageTime = event.timeStamp - lastEventTime
+
+                            // Calculate hour for this usage session (using hour of day 0-23)
+                            val cal = Calendar.getInstance()
+                            cal.timeInMillis = lastEventTime
+                            val hourOfDay = cal.get(Calendar.HOUR_OF_DAY)
+
+                            // Add usage time to appropriate hour
+                            hourlyUsageMap[hourOfDay + 1] = (hourlyUsageMap[hourOfDay + 1] ?: 0) + usageTime
+
+                            appForegroundMap[packageName] = false
+                        }
+                    }
+                }
+            }
+
+            // Handle still-running apps
+            val currentTime = System.currentTimeMillis()
+            appForegroundMap.forEach { (packageName, isForeground) ->
+                if (isForeground) {
+                    val lastEventTime = lastEventTimeMap[packageName] ?: return@forEach
+                    val usageTime = currentTime - lastEventTime
+
+                    val cal = Calendar.getInstance()
+                    cal.timeInMillis = lastEventTime
+                    val hourOfDay = cal.get(Calendar.HOUR_OF_DAY)
+
+                    hourlyUsageMap[hourOfDay + 1] = (hourlyUsageMap[hourOfDay + 1] ?: 0) + usageTime
+                }
+            }
+
+            // Make sure we have entries for all 24 hours for the chart
+            for (hour in 1..24) {
+                if (!hourlyUsageMap.containsKey(hour)) {
+                    hourlyUsageMap[hour] = 0
+                }
+            }
+
+            return hourlyUsageMap
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting hourly usage", e)
+            return (1..24).associateWith { 0L }
+        }
+    }
 }
