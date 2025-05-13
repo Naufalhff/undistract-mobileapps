@@ -83,8 +83,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
         "select_apps",
         "block_permanent?isParental={isParental}",
         "block_schedules?isParental={isParental}",
-        "variable_session",
-        "set_daily_limit",
+        "variable_session?isParental={isParental}",
+        "set_daily_limit?isParental={isParental}",
         "editUsageLimit?isParental={isParental}",
     )
 
@@ -196,23 +196,29 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     isParental = isParental
                 )
             }
-
-            composable("set_daily_limit") {
+            composable("set_daily_limit?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                 val usageLimitViewModel: UsageLimitViewModel = viewModel(
                     factory = UsageLimitViewModelFactory(
                         repository = SetaDailyLimitRepositoryImpl(
                             AppDatabase.getDatabase(context).setaDailyLimitDao()
                         ),
-                        blockSchedulesRepository = blockSchedulesRepository, // Tambahkan ini
+                        blockSchedulesRepository = blockSchedulesRepository,
                         variableSessionRepository = variableSessionRepository,
                         blockPermanentRepository = blockPermanentRepository,
-                        isParental = false
+                        isParental = isParental
                     )
                 )
                 SetDailyUsageLimitScreen(
                     navController = navController,
                     viewModel = selectAppsViewModel,
-                    usageLimitViewModel = usageLimitViewModel
+                    usageLimitViewModel = usageLimitViewModel,
+                    isParental = isParental
                 )
             }
             composable("editUsageLimit?isParental={isParental}",

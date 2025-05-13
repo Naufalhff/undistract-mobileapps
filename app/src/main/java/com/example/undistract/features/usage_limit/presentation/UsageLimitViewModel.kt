@@ -65,7 +65,7 @@ class UsageLimitViewModel(
 
     init {
         viewModelScope.launch {
-            repository.getAll().collect { limits ->
+            repository.getAll(isParental).collect { limits ->
                 _dailyLimits.value = limits
                 if (limits.isNotEmpty()) {
                     Log.d(TAG, "Received ${limits.size} limits from database")
@@ -214,7 +214,7 @@ class UsageLimitViewModel(
                 Log.d(TAG, "Refreshing daily limits from database")
                 // The repository.getAll() is already a Flow, so it will automatically update
                 // But we can force a refresh by collecting the latest values
-                repository.getAll().collect { limits ->
+                repository.getAll(isParental).collect { limits ->
                     Log.d(TAG, "Refreshed ${limits.size} limits from database")
                     _dailyLimits.value = limits
                     // Break after first collection to avoid continuous collection
@@ -244,14 +244,14 @@ class UsageLimitViewModel(
                 if (appContext != null) {
                     val database = AppDatabase.getDatabase(appContext)
                     val tempRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
-                    tempRepository.getAll().collect { limits ->
+                    tempRepository.getAll(isParental).collect { limits ->
                         _dailyLimits.value = limits
                         // Break after first collection to avoid continuous collection
                         return@collect
                     }
                 } else {
                     // Use the injected repository if appContext is null
-                    repository.getAll().collect { limits ->
+                    repository.getAll(isParental).collect { limits ->
                         _dailyLimits.value = limits
                         // Break after first collection to avoid continuous collection
                         return@collect

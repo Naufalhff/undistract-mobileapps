@@ -12,8 +12,8 @@ interface SetaDailyLimitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(setaDailyLimitEntity: SetaDailyLimitEntity): Long
 
-    @Query("SELECT * FROM daily_limits_table")
-    fun getAll(): Flow<List<SetaDailyLimitEntity>>
+    @Query("SELECT * FROM daily_limits_table WHERE isParental = :isParental")
+    fun getAll(isParental: Boolean): Flow<List<SetaDailyLimitEntity>>
 
     @Query("SELECT * FROM daily_limits_table WHERE packageName = :packageName")
     suspend fun getByPackageName(packageName: String): SetaDailyLimitEntity?
@@ -30,8 +30,11 @@ interface SetaDailyLimitDao {
     @Update
     suspend fun update(entity: SetaDailyLimitEntity)
 
+    @Query("SELECT * FROM daily_limits_table WHERE isParental = :isParental")
+    suspend fun getAllSync(isParental: Boolean): List<SetaDailyLimitEntity>
+
     @Query("SELECT * FROM daily_limits_table")
-    suspend fun getAllSync(): List<SetaDailyLimitEntity>
+    suspend fun getAllSyncNoParental(): List<SetaDailyLimitEntity>
 
     @Query("SELECT * FROM daily_limits_table WHERE id = :id")
     suspend fun getById(id: Int): SetaDailyLimitEntity?

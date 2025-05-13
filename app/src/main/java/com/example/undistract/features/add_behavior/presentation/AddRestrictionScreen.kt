@@ -150,7 +150,7 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.restrict_daily_usage),
-                        onClick = { navController.navigate("set_daily_limit") }
+                        onClick = { navController.navigate("set_daily_limit?isParental=$isParental") }
                     )
 
                     FlexboxItem(

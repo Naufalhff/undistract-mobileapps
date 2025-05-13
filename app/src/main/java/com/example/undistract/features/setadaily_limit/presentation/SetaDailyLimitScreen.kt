@@ -46,7 +46,8 @@ import android.content.Context
 fun SetDailyUsageLimitScreen(
     navController: NavHostController,
     viewModel: SelectAppsViewModel,
-    usageLimitViewModel: UsageLimitViewModel
+    usageLimitViewModel: UsageLimitViewModel,
+    isParental: Boolean
 ) {
     requireNotNull(navController) { "NavController must not be null" }
     requireNotNull(viewModel) { "ViewModel must not be null" }
@@ -57,7 +58,8 @@ fun SetDailyUsageLimitScreen(
         factory = SetaDailyLimitViewModelFactory(
             SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
-            )
+            ),
+            isParental
         )
     )
 
@@ -451,7 +453,8 @@ fun SetDailyUsageLimitScreen(
                                         appName = app.name,
                                         packageName = app.packageName,
                                         icon = iconString,
-                                        timeLimitMinutes = timeLimitMinutes
+                                        timeLimitMinutes = timeLimitMinutes,
+                                        isParental = isParental
                                     )
                                 }
 
@@ -472,8 +475,7 @@ fun SetDailyUsageLimitScreen(
                                                         try {
                                                             // Navigate after a short delay to ensure the snackbar is shown
                                                             delay(500)
-                                                            navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                                // Use a simpler navigation with fewer options
+                                                            navController.navigate("parental_usage_limit?isParental=$isParental") {
                                                                 popUpTo(navController.graph.startDestinationId)
                                                                 launchSingleTop = true
                                                             }
