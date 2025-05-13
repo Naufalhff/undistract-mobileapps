@@ -80,7 +80,7 @@ fun SetDailyUsageLimitScreen(
 
     // Time options lists
     val hoursOptions = remember { (0..23).map { "$it hrs" } }
-    val minutesOptions = remember { (0..55 step 5).map { "$it mins" } }
+    val minutesOptions = remember { (0..59).map { "$it mins" } }
 
     Column(
         modifier = Modifier
@@ -449,12 +449,15 @@ fun SetDailyUsageLimitScreen(
                                         R.drawable.app_logo.toString()
                                     }
 
+                                    Log.d("SetaDailyLimit", "Creating entity with notification type: ${viewModel.selectedNotificationType.value}")
+
                                     SetaDailyLimitEntity(
                                         appName = app.name,
                                         packageName = app.packageName,
                                         icon = iconString,
                                         timeLimitMinutes = timeLimitMinutes,
-                                        isParental = isParental
+                                        isParental = isParental,
+                                        notificationType = viewModel.selectedNotificationType.value
                                     )
                                 }
 

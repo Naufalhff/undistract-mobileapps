@@ -25,6 +25,6 @@ class UsageLimitViewModelFactory(
                 isParental = isParental
             ) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        throw IllegalArgumentException("Unknown ViewModel ass")
     }
 }

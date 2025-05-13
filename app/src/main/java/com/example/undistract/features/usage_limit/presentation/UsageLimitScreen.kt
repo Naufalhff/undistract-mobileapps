@@ -124,9 +124,10 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
 
                 // Get the progress from the ViewModel
                 val progress = appUsageProgress[limit.packageName] ?: 0f
+                val safeProgress = if (progress.isNaN()) 0f else progress
 
                 // Calculate used time in minutes
-                val usedMinutes = (progress * limit.timeLimitMinutes).toInt()
+                val usedMinutes = (safeProgress * limit.timeLimitMinutes).toInt()
                 val timeLimit = "${limit.timeLimitMinutes / 60}h ${limit.timeLimitMinutes % 60}m"
                 val usageText = "$timeLimit (${usedMinutes}m used)"
 
@@ -137,7 +138,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                     icon = iconDrawable,
                     isBlocked = limit.isActive,
                     timeLimit = usageText,
-                    progress = if (limit.isActive) progress else 0f
+                    progress = safeProgress
                 )
             } catch (e: Exception) {
                 Log.e("UsageLimitScreen", "Error creating AppLimitInfo for ${limit.appName}", e)
@@ -548,7 +549,7 @@ fun AppLimitItem(
                 app.progress?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = { it },
+                        progress = { app.progress?.let { if (it.isNaN()) 0f else it } ?: 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)

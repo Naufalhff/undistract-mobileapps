@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -95,4 +96,6 @@ dependencies {
     implementation ("androidx.compose.material:material-icons-extended:1.5.4")
 
     implementation(libs.accompanist.navigation.animation)
+
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 }
