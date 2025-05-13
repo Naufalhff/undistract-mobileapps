@@ -1,5 +1,6 @@
 package com.example.undistract.features.add_behavior.presentation
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,14 +17,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,30 +39,84 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.R
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.select_apps.presentation.BlockSchedulesViewModelFactory
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
-import com.example.undistract.ui.components.AppSelector
+import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
+import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModel
+import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModelFactory
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.navigation.BottomNavItem
 
+@SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
-fun AddRestrictionScreen(
-    navController: NavHostController,
-    viewModel: SelectAppsViewModel
-) {
+fun AddRestrictionScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val database = AppDatabase.getDatabase(context)
     var currentMainSection by remember { mutableStateOf("base") }
-    viewModel.updateCurrentRoute("add_restriction")
+    var restrictionName by remember { mutableStateOf("") }
+    val parentEntry = remember {
+        navController.getBackStackEntry("add_restriction")
+    }
+
+    val blockPermanentDao = remember { database.blockPermanentDao() }
+    val variableSessionDao = remember { database.variableSessionDao() }
+
+    val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
+    val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
+
+    val selectAppsViewModel = runCatching {
+        if (parentEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+            viewModel<SelectAppsViewModel>(
+                viewModelStoreOwner = parentEntry,
+                factory = SelectAppsViewModelFactory(context)
+            )
+        } else null
+    }.getOrNull()
+
+
+    val blockPermanentViewModel: BlockPermanentViewModel = viewModel(
+        factory = BlockPermanentViewModelFactory(blockPermanentRepository)
+    )
+
+    val blockSchedulesViewModel: BlockSchedulesViewModel = viewModel(
+        factory = BlockSchedulesViewModelFactory(context)
+    )
+
+    val variableSessionViewModel: VariableSessionViewModel = viewModel(
+        factory = VariableSessionViewModelFactory(variableSessionRepository)
+    )
 
     Column (
         modifier = Modifier
@@ -65,34 +125,69 @@ fun AddRestrictionScreen(
     ) {
 
         // SECTION 1: BACK BUTTON
-        BackButtonSection(navController)
+        BackButtonSection(
+            navController, currentMainSection, onSectionChange = { currentMainSection = it }
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Column (
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             // SECTION 2: APP SELECTOR
-            AppSelector(
-                icon = Icons.Default.Star,
-                title = stringResource(R.string.choose_apps_to_restrict),
-                navController = navController,
-                destinationRoute = "select_apps"
-            )
+            if (selectAppsViewModel != null) {
+                AppSelectorSection(
+                    selectAppsViewModel,
+                    navController
+                )
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // SECTION 3: RESTRICTION NAME INPUT OR MAIN QUESTION
+            if (currentMainSection != "base") {
+                RestrictionNameInput(
+                    restrictionName = restrictionName,
+                    onRestrictionNameChange = { restrictionName = it }
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.choose_what_restriction),
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
 
-            // SECTION 3: MAIN SECTION
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // SECTION 4: MAIN SECTION
             when (currentMainSection) {
                 "base" -> BaseSection(onSectionChange = { currentMainSection = it })
-//                "block_permanent" -> BlockPermanentScreen()
-//                "block_schedule" -> BlockScheduleScreen()
-//                "daily_limit" -> DailyLimitScreen()
-//                "session_limit" -> SessionLimitScreen()
+                "block_permanent" -> selectAppsViewModel?.let {
+                    BlockPermanentScreen(
+                        navController = navController,
+                        blockPermanentViewModel = blockPermanentViewModel,
+                        selectAppsViewModel = it
+                    )
+                }
+                "block_schedule" -> selectAppsViewModel?.let {
+                    BlockSchedulesScreen(
+                        navController = navController,
+                        selectAppViewModel = it,
+                        viewModel = blockSchedulesViewModel
+                    )
+                }
+//                "daily_limit" -> SetDailyUsageLimitScreen()
+                "session_limit" -> selectAppsViewModel?.let {
+                    VariableSessionScreen(
+                        navController = navController,
+                        viewModel = variableSessionViewModel,
+                        selectAppViewModel = it
+                    )
+                }
             }
         }
     }
@@ -100,7 +195,9 @@ fun AddRestrictionScreen(
 
 @Composable
 fun BackButtonSection(
-    navController: NavHostController
+    navController: NavHostController,
+    currentMainSection: String,
+    onSectionChange: (String) -> Unit
 ) {
     Row (
         modifier = Modifier
@@ -112,7 +209,13 @@ fun BackButtonSection(
     ) {
         BackButton (
             modifier = Modifier.size(24.dp),
-            onClick = { navController.navigate(BottomNavItem.UsageLimit.route)}
+            onClick = {
+                if (currentMainSection == "base") {
+                    navController.navigate(BottomNavItem.UsageLimit.route)
+                } else {
+                    onSectionChange("base")
+                }
+            }
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -127,12 +230,22 @@ fun BackButtonSection(
 
 @Composable
 fun AppSelectorSection(
-    selectedApps: List<AppInfo>,
+    selectAppsViewModel: SelectAppsViewModel,
     navController: NavController,
-    showAppsDialog: Boolean,
-    onShowAppsDialogChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val selectedPackageNames = selectAppsViewModel.getSelectedApps()
+
+    val installedApps = selectAppsViewModel.installedApps.collectAsState().value
+
+    var selectedApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
+
+    LaunchedEffect(selectedPackageNames, installedApps) {
+        selectedApps = installedApps.filter { appInfo ->
+            selectedPackageNames.contains(appInfo.packageName)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -145,12 +258,8 @@ fun AppSelectorSection(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFFEAD6FF))
                 .padding(16.dp)
-                .clickable(enabled = selectedApps.size > 1) {
-                    if (selectedApps.isEmpty()) {
-                        navController.navigate("select_apps")
-                    } else {
-                        onShowAppsDialogChange(true)
-                    }
+                .clickable {
+                    navController.navigate("select_apps")
                 }
         ) {
             Row(
@@ -357,8 +466,41 @@ fun FlexboxItem(
                 text = label,
                 fontSize = 12.sp,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+fun RestrictionNameInput(
+    restrictionName: String,
+    onRestrictionNameChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .padding(start = 21.dp, end = 21.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Text(
+                text = stringResource(R.string.name_your_restriction),
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = restrictionName,
+            onValueChange = onRestrictionNameChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(text = "Restriction Name") },
+            shape = RoundedCornerShape(8.dp),
+            singleLine = true
+        )
     }
 }

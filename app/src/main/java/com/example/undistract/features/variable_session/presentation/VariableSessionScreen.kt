@@ -46,7 +46,6 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
     var coolDownMinutes by remember { mutableStateOf("") }
 
     // Mengambil selected apps
-    selectAppViewModel.updateCurrentRoute("variable_session")
     val selectedApps = selectAppViewModel.getSelectedApps()
     val database = AppDatabase.getDatabase(context)
     val variableSessionDao = database.variableSessionDao()
@@ -130,34 +129,6 @@ fun VariableSessionScreen(navController: NavController, viewModel: VariableSessi
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BackButton (
-                modifier = Modifier.size(24.dp),
-                onClick = { navController.popBackStack()}
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Text(
-                text = "Custom session restriction",
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            GetAppInfo(context, selectedApps)
-        }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -3,7 +3,6 @@ package com.example.undistract.features.usage_limit.presentation
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.usage_limit.domain.AppLimitInfo
 import com.example.undistract.ui.theme.Purple40
@@ -39,13 +37,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+fun EditUsageLimitScreen(context: Context, navController: NavHostController) {
     val sharedViewModel: SharedViewModel = viewModel()
     val appLimitInfo by sharedViewModel.appLimitInfo.collectAsState()
 

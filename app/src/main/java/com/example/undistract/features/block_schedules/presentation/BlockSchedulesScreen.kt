@@ -42,10 +42,13 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedulesViewModel, selectAppViewModel: SelectAppsViewModel) {
+fun BlockSchedulesScreen(
+    navController: NavController,
+    viewModel: BlockSchedulesViewModel,
+    selectAppViewModel: SelectAppsViewModel
+) {
     val context = LocalContext.current
     // Mengambil selected apps
-    selectAppViewModel.updateCurrentRoute("block_schedules")
     val selectedApps = selectAppViewModel.getSelectedApps()
     val database = AppDatabase.getDatabase(context)
     val blockSchedulesDao = database.blockSchedulesDao()
@@ -73,34 +76,6 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BackButton (
-                modifier = Modifier.size(24.dp),
-                onClick = { navController.popBackStack()}
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Text(
-                text = "Block on Schedules",
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            GetAppInfo(context, selectedApps)
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()

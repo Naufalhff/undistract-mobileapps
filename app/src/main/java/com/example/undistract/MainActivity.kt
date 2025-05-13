@@ -20,7 +20,9 @@ import com.example.undistract.features.get_installed_apps.domain.GetInstalledApp
 import com.example.undistract.features.usage_monitor.UsageMonitorService
 import com.example.undistract.ui.navigation.AppNavHost
 import com.example.undistract.ui.theme.UndistractTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private lateinit var installedApps: List<AppInfo>
@@ -46,22 +48,14 @@ class MainActivity : ComponentActivity() {
         // Start the monitoring service
         startMonitoringService()
 
-        val repository = InstalledAppsRepository(this)
-        val getInstalledAppsUseCase = GetInstalledAppsUseCase(repository)
-
         lifecycleScope.launch {
-            installedApps = getInstalledAppsUseCase(this@MainActivity)
-
             setContent {
                 UndistractTheme {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AppNavHost(
-                            context = this@MainActivity,
-                            installedApps = installedApps
-                        )
+                        AppNavHost(context = this@MainActivity)
                     }
                 }
             }

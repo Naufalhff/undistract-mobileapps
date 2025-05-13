@@ -12,10 +12,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.profile.presentation.ProfileScreen
@@ -23,32 +26,16 @@ import com.example.undistract.features.select_apps.data.SelectAppsRepository
 import com.example.undistract.features.select_apps.presentation.SelectAppsScreen
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
-import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
-import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
-import com.example.undistract.features.variable_session.data.VariableSessionRepository
-import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
-import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
-import com.example.undistract.navigation.SelectedAppsRouteObserver
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
-import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
-import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
-import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
-import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModelFactory
+import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
+import com.example.undistract.features.variable_session.data.VariableSessionRepository
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 
 
 @Composable
-fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
+fun AppNavHost(context: Context) {
     val navController = rememberNavController()
     val database = AppDatabase.getDatabase(context)
-
-
 
     // Dapatkan DAO dari database
     val blockSchedulesDao = database.blockSchedulesDao()
@@ -69,9 +56,6 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
     val blockPermanentViewModel = BlockPermanentViewModel(blockPermanentRepository)
 
-    // Observer untuk memantau perubahan rute
-    SelectedAppsRouteObserver(navController, selectAppsViewModel)
-
     // List rute yang tidak menggunakan navBar
     val routesWithoutNavBar = listOf(
         "add_restriction",
@@ -80,8 +64,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
         "block_schedules",
         "variable_session",
         "set_daily_limit",
-        "editUsageLimit"
-
+        "editUsageLimit",
+        "add_restriction_main"
     )
 
     Scaffold(
@@ -113,66 +97,25 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
             }
-            composable("add_restriction") {
-                AddRestrictionScreen(
-                    navController = navController,
-                    viewModel = selectAppsViewModel)
-            }
-            composable("select_apps") {
-                SelectAppsScreen(
-                    context = context,
-                    navController = navController,
-                    viewModel = selectAppsViewModel
-                )
-            }
-            composable("block_permanent")
-            {
-                BlockPermanentScreen(
-                    navController = navController,
-                    selectAppsViewModel = selectAppsViewModel,
-                    blockPermanentViewModel = blockPermanentViewModel
-                )
-            }
-            composable("block_schedules")
-            {
-                BlockSchedulesScreen(
-                    navController = navController,
-                    viewModel = blockSchedulesViewModel,
-                    selectAppViewModel = selectAppsViewModel
-                )
-            }
-            composable("variable_session")
-            {
-                VariableSessionScreen(
-                    navController = navController,
-                    viewModel = variableSessionViewModel,
-                    selectAppViewModel = selectAppsViewModel
-                )
-            }
 
-            composable("set_daily_limit") {
-                val usageLimitViewModel: UsageLimitViewModel = viewModel(
-                    factory = UsageLimitViewModelFactory(
-                        repository = SetaDailyLimitRepositoryImpl(
-                            AppDatabase.getDatabase(context).setaDailyLimitDao()
-                        ),
-                        blockSchedulesRepository = blockSchedulesRepository, // Tambahkan ini
-                        variableSessionRepository = variableSessionRepository,
-                        blockPermanentRepository = blockPermanentRepository
-                    )
-                )
-                SetDailyUsageLimitScreen(
-                    navController = navController,
-                    viewModel = selectAppsViewModel,
-                    usageLimitViewModel = usageLimitViewModel
-                )
+            navigation(
+                startDestination = "add_restriction_main",
+                route = "add_restriction"
+            ) {
+                composable("add_restriction_main")
+                {
+                    AddRestrictionScreen(navController = navController)
+                }
+                composable("select_apps")
+                {
+                    SelectAppsScreen(navController = navController)
+                }
             }
 
             composable("editUsageLimit") {
                 EditUsageLimitScreen(
                     context = context,
-                    navController = navController,
-                    viewModel = selectAppsViewModel,
+                    navController = navController
                 )
             }
         }

@@ -1,6 +1,6 @@
 package com.example.undistract.features.select_apps.presentation
 
-import android.content.Context
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,18 +12,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.ui.components.BackButton
 
+@SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun SelectAppsScreen(
-    context: Context,
     navController: NavHostController,
-    viewModel: SelectAppsViewModel
 ) {
-    viewModel.updateCurrentRoute("select_apps")
+    val parentEntry = remember {
+        navController.getBackStackEntry("add_restriction")
+    }
+    val viewModel: SelectAppsViewModel = viewModel(parentEntry)
 
     val installedApps by viewModel.installedApps.collectAsState()
     val selectedAppsMap = viewModel.selectedApps

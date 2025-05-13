@@ -50,11 +50,6 @@ class SelectAppsViewModel(
         }
     }
 
-    // Update rute saat ini
-    fun updateCurrentRoute(route: String) {
-        selectAppsRepository.setCurrentRoute(route)
-    }
-
     // Toggle selection status untuk aplikasi
     fun toggleAppSelection(packageName: String, isSelected: Boolean) {
         selectedApps[packageName] = isSelected
@@ -64,11 +59,6 @@ class SelectAppsViewModel(
     // Mendapatkan daftar aplikasi yang dipilih
     fun getSelectedApps(): List<String> {
         return selectAppsRepository.getSelectedApps()
-    }
-
-    // Callback ketika rute berubah
-    fun onRouteChanged(newRoute: String?) {
-        selectAppsRepository.checkAndClearDataIfNeeded(newRoute)
     }
 
     fun getSelectedAppsInfo(): List<AppInfo> {
