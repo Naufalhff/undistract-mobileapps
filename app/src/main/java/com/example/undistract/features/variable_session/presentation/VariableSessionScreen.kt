@@ -265,12 +265,13 @@ fun VariableSessionScreen(
                                         isOnCooldown = false,
                                         isActive = true
                                     )
-                                    navController.popBackStack()
+                                    navController.navigate("parental_usage_limit?isParental=$isParental")
                                     Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                                 Log.e("SAVE_ERROR", "Failed to save variable session", e)
+                                navController.navigate("parental_usage_limit?isParental=$isParental")
                             }
                         }
                     }

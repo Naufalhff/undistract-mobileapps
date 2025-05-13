@@ -35,6 +35,7 @@ import android.util.Log
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.core.content.ContextCompat
 import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
@@ -59,7 +60,12 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel, isParental: Boolean = false) {
+fun UsageLimitScreen(
+    context: Context,
+    navController: NavHostController,
+    viewModel: SelectAppsViewModel,
+    isParental: Boolean = false
+) {
     val sharedViewModel: SharedViewModel = viewModel()
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
@@ -178,10 +184,12 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
 
     Scaffold(
         topBar = {
+            var menuExpanded by remember { mutableStateOf(false) }
+
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Usage Limits",
+                        text = if (isParental) "Parental Control" else "Usage Limits",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 9.dp)
@@ -197,7 +205,8 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                         Image(
                             painter = painterResource(id = R.drawable.app_logo),
                             contentDescription = "App Logo",
-                            modifier = Modifier.size(50.dp))
+                            modifier = Modifier.size(50.dp)
+                        )
                     }
                 },
                 actions = {
@@ -210,14 +219,34 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                             contentDescription = "Refresh"
                         )
                     }
-                    IconButton(
-                        onClick = { /* TODO */ },
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications"
-                        )
+
+                    if (isParental) {
+                        Box(
+                            modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+                        ) {
+                            IconButton(
+                                onClick = { menuExpanded = true },
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MoreVert,
+                                    contentDescription = "More Options"
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Reset PIN") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        navController.navigate("resetPin")
+                                    }
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(

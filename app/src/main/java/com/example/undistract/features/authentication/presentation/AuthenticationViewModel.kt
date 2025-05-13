@@ -1,20 +1,29 @@
-package com.example.undistract.features.parental_control.presentation
+package com.example.undistract.features.authentication.presentation
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.undistract.features.parental_control.data.ParentalControlRepository
-import com.example.undistract.features.parental_control.data.local.PinDao
-import com.example.undistract.features.parental_control.data.local.PinEntity
+import com.example.undistract.features.authentication.data.AuthenticationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class ParentalControlViewModel(
-    private val repository: ParentalControlRepository
+class AuthenticationViewModel(
+    private val repository: AuthenticationRepository
 ) : ViewModel() {
+
+    suspend fun verifyOtp(email: String, otp: String): Boolean {
+        return repository.verifyOtp(email, otp)
+    }
+
+    fun sendOtp(email: String) {
+        viewModelScope.launch {
+            repository.sendOtp(email)
+        }
+    }
+
     var hasPin by mutableStateOf<Boolean?>(null)
 
     private val _isVerified = MutableStateFlow(false)
@@ -39,15 +48,25 @@ class ParentalControlViewModel(
         }
     }
 
-    fun addPin(pin: String) {
+    fun addPin(pin: String, email: String) {
         viewModelScope.launch {
-            repository.addPin(pin)
+            repository.addPin(pin, email)
         }
     }
 
     suspend fun verifyPin(input: String): Boolean {
         val storedPin = repository.getPin()
         return storedPin != null && storedPin.toString() == input
+    }
+
+    fun updatePin(newPin: String){
+        viewModelScope.launch {
+            repository.updatePin(newPin)
+        }
+    }
+
+    suspend fun getEmail(): String? {
+        return repository.getEmail()
     }
 }
 

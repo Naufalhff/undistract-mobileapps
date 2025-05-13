@@ -92,10 +92,12 @@ dependencies {
     implementation ("androidx.compose.runtime:runtime:1.6.3")
     implementation ("androidx.activity:activity-compose:1.8.2")
 
-    //icon
+    // icon
     implementation ("androidx.compose.material:material-icons-extended:1.5.4")
-
     implementation(libs.accompanist.navigation.animation)
-
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Retrofit
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
 }

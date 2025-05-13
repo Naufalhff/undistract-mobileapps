@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,7 +15,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.undistract.config.AppDatabase
+import com.example.undistract.core.ApiClient
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
+import com.example.undistract.features.authentication.data.AuthenticationRepository
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
@@ -28,24 +29,20 @@ import com.example.undistract.features.select_apps.presentation.SelectAppsViewMo
 import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
-import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.navigation.SelectedAppsRouteObserver
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
-import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
-import com.example.undistract.features.parental_control.data.ParentalControlRepository
-import com.example.undistract.features.parental_control.presentation.ParentalControlViewModel
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModelFactory
+import com.example.undistract.features.authentication.presentation.AuthenticationViewModel
+import com.example.undistract.features.authentication.presentation.CreatePINScreen
+import com.example.undistract.features.authentication.presentation.ResetPINScreen
+import com.example.undistract.features.authentication.presentation.VerifyOTPScreen
 
 
 @Composable
@@ -53,7 +50,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val navController = rememberNavController()
     val database = AppDatabase.getDatabase(context)
 
-
+    // Dapatkan API service
+    val apiService = remember { ApiClient.apiService }
 
     // Dapatkan DAO dari database
     val blockSchedulesDao = database.blockSchedulesDao()
@@ -66,13 +64,13 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
     val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
     val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
-    val parentalControlRepository = remember { ParentalControlRepository(pinDao) }
+    val authenticationRepository = remember { AuthenticationRepository(apiService, pinDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
         factory = SelectAppsViewModelFactory(context, selectAppsRepository)
     )
-    val parentalControlViewModel = ParentalControlViewModel(parentalControlRepository)
+    val authenticationViewModel = AuthenticationViewModel(authenticationRepository)
 
     // Observer untuk memantau perubahan rute
     SelectedAppsRouteObserver(navController, selectAppsViewModel)
@@ -86,6 +84,8 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
         "variable_session?isParental={isParental}",
         "set_daily_limit?isParental={isParental}",
         "editUsageLimit?isParental={isParental}",
+        "createPin?email={email}",
+        "verifyOtp?email={email}"
     )
 
     Scaffold(
@@ -112,7 +112,7 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                 )
             }
             composable(BottomNavItem.ParentalControl.route) {
-                ParentalControlScreen(navController = navController, viewModel = parentalControlViewModel)
+                ParentalControlScreen(navController = navController, viewModel = authenticationViewModel)
             }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
@@ -233,6 +233,38 @@ fun AppNavHost(context: Context, installedApps: List<AppInfo>) {
                     navController = navController,
                     viewModel = selectAppsViewModel,
                     isParental = isParental
+                )
+            }
+            composable("verifyOtp?email={email}",
+                arguments = listOf(navArgument("email") {
+                    defaultValue = ""
+                    type = NavType.StringType
+                })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                VerifyOTPScreen(
+                    navController = navController,
+                    viewModel = authenticationViewModel,
+                    email = email
+                )
+            }
+            composable("createPin?email={email}",
+                arguments = listOf(navArgument("email") {
+                    defaultValue = ""
+                    type = NavType.StringType
+                })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                CreatePINScreen(
+                    navController = navController,
+                    viewModel = authenticationViewModel,
+                    email = email
+                )
+            }
+            composable("resetPin"){
+                ResetPINScreen(
+                    navController = navController,
+                    viewModel = authenticationViewModel
                 )
             }
         }
