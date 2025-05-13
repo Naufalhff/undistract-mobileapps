@@ -30,27 +30,27 @@ data class HourlyUsageData(
 class MyUsageViewModel(private val context: Context) : ViewModel() {
     private val usageStatsManager = UsageStatsManager(context)
     private val packageManager = context.packageManager
-    
+
     private val _appUsageStats = MutableStateFlow<List<AppUsageInfo>>(emptyList())
     val appUsageStats: StateFlow<List<AppUsageInfo>> = _appUsageStats
-    
+
     private val _hourlyUsageData = MutableStateFlow<List<HourlyUsageData>>(emptyList())
     val hourlyUsageData: StateFlow<List<HourlyUsageData>> = _hourlyUsageData
-    
+
     private val _totalUsage = MutableStateFlow(0L)
     val totalUsage: StateFlow<Long> = _totalUsage
-    
+
     init {
         refreshUsageStats()
     }
-    
+
     fun refreshUsageStats() {
         viewModelScope.launch {
             fetchTodayUsageStats()
             fetchHourlyUsageData()
         }
     }
-    
+
     private suspend fun fetchTodayUsageStats() {
         withContext(Dispatchers.IO) {
             // Check for permission
@@ -58,31 +58,23 @@ class MyUsageViewModel(private val context: Context) : ViewModel() {
                 usageStatsManager.requestUsageStatsPermission()
                 return@withContext
             }
-            
-            // Get the start of today
-            val calendar = Calendar.getInstance()
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            val startTime = calendar.timeInMillis
-            
+
             // Get usage stats from the UsageStatsManager
             val appStats = usageStatsManager.getDetailedAppUsageToday()
-            
+
             var totalUsageTime = 0L
             val appUsageList = mutableListOf<AppUsageInfo>()
-            
+
             // Process each app's usage statistics
             appStats.forEach { (packageName, usageTime) ->
                 try {
                     if (usageTime > 0) {
                         totalUsageTime += usageTime
-                        
+
                         val appInfo = packageManager.getApplicationInfo(packageName, 0)
                         val appName = packageManager.getApplicationLabel(appInfo).toString()
                         val appIcon = packageManager.getApplicationIcon(appInfo)
-                        
+
                         appUsageList.add(
                             AppUsageInfo(
                                 appName = appName,
@@ -97,7 +89,7 @@ class MyUsageViewModel(private val context: Context) : ViewModel() {
                     // Skip apps that cannot be found
                 }
             }
-            
+
             // Sort by usage time (descending) and calculate percentage
             val sortedList = appUsageList.sortedByDescending { it.usageTimeInMillis }
                 .map { app ->
@@ -108,22 +100,30 @@ class MyUsageViewModel(private val context: Context) : ViewModel() {
                     }
                     app.copy(usagePercentage = percentage)
                 }
-            
+
             _appUsageStats.value = sortedList
             _totalUsage.value = totalUsageTime
         }
     }
-    
+
     private suspend fun fetchHourlyUsageData() {
         withContext(Dispatchers.IO) {
             if (!usageStatsManager.hasUsageStatsPermission()) {
                 return@withContext
             }
-            
+
             val hourlyData = usageStatsManager.getHourlyUsageToday()
-            _hourlyUsageData.value = hourlyData.map { (hour, usageTime) ->
-                HourlyUsageData(hour, usageTime)
+
+            // Convert to list of HourlyUsageData objects
+            val hourlyUsageList = mutableListOf<HourlyUsageData>()
+
+            // Ensure we have data for all hours (0-23)
+            for (hour in 0..23) {
+                val usageTime = hourlyData[hour] ?: 0L
+                hourlyUsageList.add(HourlyUsageData(hour, usageTime))
             }
+
+            _hourlyUsageData.value = hourlyUsageList
         }
     }
 }
@@ -136,4 +136,4 @@ class MyUsageViewModelFactory(private val context: Context) : ViewModelProvider.
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
-} 
+}
