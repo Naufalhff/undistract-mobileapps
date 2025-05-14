@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.ui.components.BackButton
 
 @SuppressLint("UnrememberedGetBackStackEntry")
@@ -23,12 +23,16 @@ import com.example.undistract.ui.components.BackButton
 fun SelectAppsScreen(
     navController: NavHostController,
 ) {
+    // Mendapatkan ViewModel dengan parentEntry untuk navigasi
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
     val viewModel: SelectAppsViewModel = viewModel(parentEntry)
 
-    val installedApps by viewModel.installedApps.collectAsState()
+    // Mendapatkan daftar item yang digabungkan (Aplikasi dan URL)
+    val combinedItems by viewModel.combinedItems.collectAsState()
+
+    // Mendapatkan status pilihan aplikasi
     val selectedAppsMap = viewModel.selectedApps
 
     Column(
@@ -60,7 +64,7 @@ fun SelectAppsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // LIST OF INSTALLED APPLICATION
+        // LIST OF INSTALLED APPLICATION OR URL (Gabungan)
         LazyColumn(
             modifier = Modifier
                 .background(color = MaterialTheme.colorScheme.background)
@@ -68,30 +72,43 @@ fun SelectAppsScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(
-                items = installedApps,
-                key = { app -> app.packageName }
-            ) { app ->
-                val isChecked = selectedAppsMap[app.packageName] ?: false
-                AppListItem(
-                    app = app,
-                    isChecked = isChecked,
-                    onCheckedChange = { isChecked ->
-                        viewModel.toggleAppSelection(app.packageName, isChecked)
+                items = combinedItems,
+                key = { item -> item.identifier }
+            ) { item ->
+                val isChecked = selectedAppsMap[item.identifier] ?: false
+
+                // Menangani item berdasarkan jenisnya (aplikasi atau URL)
+                when (item) {
+                    is AppOrUrlItem.AppItem -> {
+                        ListItem(
+                            item = item,
+                            isChecked = isChecked,
+                            onCheckedChange = { isChecked ->
+                                viewModel.toggleAppSelection(item.identifier, isChecked)
+                            }
+                        )
                     }
-                )
+                    is AppOrUrlItem.UrlItem -> {
+                        ListItem(
+                            item = item,
+                            isChecked = isChecked,
+                            onCheckedChange = { isChecked ->
+                                viewModel.toggleAppSelection(item.identifier, isChecked)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AppListItem(
-    app: AppInfo,
+private fun ListItem(
+    item: AppOrUrlItem,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val context = LocalContext.current
-
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
@@ -108,15 +125,15 @@ private fun AppListItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                painter = rememberAsyncImagePainter(app.icon),
-                contentDescription = app.name,
+                painter = rememberAsyncImagePainter(item.icon),
+                contentDescription = item.name,
                 modifier = Modifier.size(40.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = app.name,
+                text = item.name,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1

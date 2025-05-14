@@ -19,6 +19,7 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
+import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.profile.presentation.ProfileScreen
@@ -41,16 +42,18 @@ fun AppNavHost(context: Context) {
     val blockSchedulesDao = database.blockSchedulesDao()
     val variableSessionDao = database.variableSessionDao()
     val blockPermanentDao = database.blockPermanentDao()
+    val visitedUrlsDao = database.visitedUrlsDao()
 
-    // Inisialisasi repository & dao
+    // Inisialisasi repository
     val selectAppsRepository = remember { SelectAppsRepository() }
     val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
     val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
+    val visitedUrlsRepository = remember { VisitedUrlsRepository(visitedUrlsDao) }
 
     // Inisialisasi ViewModel
     val selectAppsViewModel: SelectAppsViewModel = viewModel(
-        factory = SelectAppsViewModelFactory(context, selectAppsRepository)
+        factory = SelectAppsViewModelFactory(context, visitedUrlsRepository = visitedUrlsRepository)
     )
     val blockSchedulesViewModel = BlockSchedulesViewModel(blockSchedulesRepository)
     val variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)

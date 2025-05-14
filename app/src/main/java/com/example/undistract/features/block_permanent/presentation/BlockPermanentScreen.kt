@@ -3,15 +3,18 @@ package com.example.undistract.features.block_permanent.presentation
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.ui.navigation.BottomNavItem
 import com.example.undistract.ui.theme.ColorNew
@@ -36,24 +39,30 @@ fun BlockPermanentScreen(
     selectAppsViewModel: SelectAppsViewModel,
     blockPermanentViewModel: BlockPermanentViewModel
 ) {
-    val selectedPackageNames = selectAppsViewModel.getSelectedApps()
+    // Mengambil daftar identifier aplikasi yang dipilih
+    val selectedPackageNames = selectAppsViewModel.getSelectedIdentifiers()
 
-    val installedApps = selectAppsViewModel.installedApps.collectAsState().value
+    // Mengambil daftar gabungan aplikasi dan URL yang sudah disortir
+    val combinedItems by selectAppsViewModel.combinedItems.collectAsState()
 
+    // Status untuk menyimpan nama pembatasan
     var restrictionName by remember { mutableStateOf("") }
 
-    var selectedAppsWithInfo by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
+    // Filter item yang dipilih berdasarkan identifier
+    var selectedAppsWithInfo by remember { mutableStateOf<List<AppOrUrlItem>>(emptyList()) }
 
-    LaunchedEffect(selectedPackageNames, installedApps) {
-        selectedAppsWithInfo = installedApps.filter { appInfo ->
-            selectedPackageNames.contains(appInfo.packageName)
+    // Ketika daftar selectedPackageNames atau combinedItems berubah, perbarui selectedAppsWithInfo
+    LaunchedEffect(selectedPackageNames, combinedItems) {
+        selectedAppsWithInfo = combinedItems.filter { item ->
+            selectedPackageNames.contains(item.identifier)
         }
     }
 
-    Box (
+    Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        Row (
+        // Tombol di bawah
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
@@ -65,7 +74,7 @@ fun BlockPermanentScreen(
                     containerColor = Color.Transparent,
                     contentColor = ColorNew.primary
                 ),
-                onClick = { navController.navigate(BottomNavItem.UsageLimit.route)}
+                onClick = { navController.navigate(BottomNavItem.UsageLimit.route) }
             ) {
                 Text(text = "Cancel")
             }
@@ -80,11 +89,12 @@ fun BlockPermanentScreen(
                 ),
                 onClick = {
                     try {
-                        selectedAppsWithInfo.forEach { appInfo ->
+                        selectedAppsWithInfo.forEach { item ->
+                            // Menggunakan nama aplikasi atau URL, dan mengatur nilai default untuk nama pembatasan
                             val blockPermanentEntity = BlockPermanentEntity(
-                                packageName = appInfo.packageName,
-                                appName = restrictionName.ifEmpty { appInfo.name },
-                                isActive = true,
+                                packageName = item.identifier,
+                                appName = restrictionName.ifEmpty { item.name },
+                                isActive = true
                             )
                             blockPermanentViewModel.insertBlockPermanent(blockPermanentEntity)
                             Log.d("BlockPermanentScreen", "Data saved: ${blockPermanentEntity.packageName}, ${blockPermanentEntity.appName}")

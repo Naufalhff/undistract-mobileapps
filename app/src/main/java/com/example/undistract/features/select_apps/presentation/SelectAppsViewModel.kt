@@ -1,11 +1,10 @@
 package com.example.undistract.features.select_apps.presentation
 
-import android.content.Context
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
-import com.example.undistract.features.get_installed_apps.domain.GetInstalledAppsUseCase
+import com.example.undistract.features.get_app_data.data.AppDataRepository
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.data.SelectAppsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,56 +13,55 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class SelectAppsViewModel(
-    private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
-    private val selectAppsRepository: SelectAppsRepository,
-    private val appContext: Context
+    private val appDataRepository: AppDataRepository,
+    private val selectAppsRepository: SelectAppsRepository
 ) : ViewModel() {
 
-    private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
-    val installedApps: StateFlow<List<AppInfo>> = _installedApps.asStateFlow()
+    private val _combinedItems = MutableStateFlow<List<AppOrUrlItem>>(emptyList())
+    val combinedItems: StateFlow<List<AppOrUrlItem>> = _combinedItems.asStateFlow()
 
-    // State map untuk UI
     val selectedApps = mutableStateMapOf<String, Boolean>()
 
     init {
-        loadInstalledApps(appContext)
+        loadCombinedItems()
 
         // Observer perubahan dari repository
         viewModelScope.launch {
             selectAppsRepository.selectedApps.collectLatest { selectedAppsMap ->
-                // Update UI state map
-                selectedAppsMap.forEach { (packageName, isSelected) ->
-                    selectedApps[packageName] = isSelected
+                selectedAppsMap.forEach { (identifier, isSelected) ->
+                    selectedApps[identifier] = isSelected
                 }
             }
         }
     }
 
-    private fun loadInstalledApps(context: Context) {
+    private fun loadCombinedItems() {
         viewModelScope.launch {
-            val apps = getInstalledAppsUseCase(context)
-            _installedApps.value = apps
+            // Dapatkan data aplikasi dan URL dari repository
+            val items = appDataRepository.getCombinedList()
 
-            apps.forEach { app ->
-                selectedApps[app.packageName] = selectAppsRepository.isAppSelected(app.packageName)
+            // Gabungkan aplikasi dan URL
+            val combined = items.sortedBy { it.name }
+
+            _combinedItems.value = combined
+
+            // Set status pilihan untuk setiap item
+            combined.forEach { item ->
+                selectedApps[item.identifier] = selectAppsRepository.isAppSelected(item.identifier)
             }
         }
     }
 
-    // Toggle selection status untuk aplikasi
-    fun toggleAppSelection(packageName: String, isSelected: Boolean) {
-        selectedApps[packageName] = isSelected
-        selectAppsRepository.toggleAppSelection(packageName, isSelected)
+    fun toggleAppSelection(identifier: String, isSelected: Boolean) {
+        selectedApps[identifier] = isSelected
+        selectAppsRepository.toggleAppSelection(identifier, isSelected)
     }
 
-    // Mendapatkan daftar aplikasi yang dipilih
-    fun getSelectedApps(): List<String> {
+    fun getSelectedIdentifiers(): List<String> {
         return selectAppsRepository.getSelectedApps()
     }
 
-    fun getSelectedAppsInfo(): List<AppInfo> {
-        return installedApps.value.filter { app ->
-            selectedApps[app.packageName] == true
-        }
+    fun getSelectedItems(): List<AppOrUrlItem> {
+        return combinedItems.value.filter { selectedApps[it.identifier] == true }
     }
 }

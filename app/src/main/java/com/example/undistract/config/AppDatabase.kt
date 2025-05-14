@@ -8,17 +8,30 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
+import com.example.undistract.features.get_visited_urls.data.local.VisitedUrlsDao
+import com.example.undistract.features.get_visited_urls.data.local.VisitedUrlsEntity
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
 
-@Database(entities = [BlockSchedulesEntity::class, VariableSessionEntity::class, BlockPermanentEntity::class, SetaDailyLimitEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [
+        BlockSchedulesEntity::class,
+        VariableSessionEntity::class,
+        BlockPermanentEntity::class,
+        SetaDailyLimitEntity::class,
+        VisitedUrlsEntity::class
+    ],
+    version = 1,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun blockSchedulesDao(): BlockSchedulesDao
     abstract fun variableSessionDao(): VariableSessionDao
     abstract fun blockPermanentDao(): BlockPermanentDao
     abstract fun setaDailyLimitDao(): SetaDailyLimitDao
+    abstract fun visitedUrlsDao(): VisitedUrlsDao
 
     companion object {
         @Volatile

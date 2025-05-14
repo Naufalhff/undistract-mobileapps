@@ -59,19 +59,13 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
-import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
+import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.select_apps.presentation.BlockSchedulesViewModelFactory
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
-import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
-import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModel
-import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModelFactory
-import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
@@ -92,15 +86,17 @@ fun AddRestrictionScreen(navController: NavHostController) {
 
     val blockPermanentDao = remember { database.blockPermanentDao() }
     val variableSessionDao = remember { database.variableSessionDao() }
+    val visitedUrlsDao = remember { database.visitedUrlsDao() }
 
     val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
+    val visitedUrlsRepository = remember { VisitedUrlsRepository(visitedUrlsDao) }
 
     val selectAppsViewModel = runCatching {
         if (parentEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
             viewModel<SelectAppsViewModel>(
                 viewModelStoreOwner = parentEntry,
-                factory = SelectAppsViewModelFactory(context)
+                factory = SelectAppsViewModelFactory(context, visitedUrlsRepository = visitedUrlsRepository)
             )
         } else null
     }.getOrNull()
@@ -234,15 +230,19 @@ fun AppSelectorSection(
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    val selectedPackageNames = selectAppsViewModel.getSelectedApps()
+    // Mengambil daftar identifier aplikasi yang dipilih
+    val selectedPackageNames = selectAppsViewModel.getSelectedIdentifiers()
 
-    val installedApps = selectAppsViewModel.installedApps.collectAsState().value
+    // Mengambil daftar gabungan aplikasi dan URL yang sudah disortir
+    val combinedItems by selectAppsViewModel.combinedItems.collectAsState()
 
-    var selectedApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
+    // Filter item yang dipilih berdasarkan identifier
+    var selectedApps by remember { mutableStateOf<List<AppOrUrlItem>>(emptyList()) }
 
-    LaunchedEffect(selectedPackageNames, installedApps) {
-        selectedApps = installedApps.filter { appInfo ->
-            selectedPackageNames.contains(appInfo.packageName)
+    // Ketika daftar selectedPackageNames atau combinedItems berubah, perbarui selectedAppsWithInfo
+    LaunchedEffect(selectedPackageNames, combinedItems) {
+        selectedApps = combinedItems.filter { item ->
+            selectedPackageNames.contains(item.identifier)
         }
     }
 
@@ -349,7 +349,7 @@ fun AppSelectorSection(
 }
 
 @Composable
-private fun AppIconPreview(app: AppInfo?) {
+private fun AppIconPreview(app: AppOrUrlItem?) {
     Box(
         modifier = Modifier
             .size(16.dp)
@@ -372,7 +372,7 @@ private fun AppIconPreview(app: AppInfo?) {
 }
 
 @Composable
-private fun AppIcon(app: AppInfo, size: Dp) {
+private fun AppIcon(app: AppOrUrlItem, size: Dp) {
     Image(
         painter = rememberAsyncImagePainter(app.icon),
         contentDescription = app.name,

@@ -1,0 +1,210 @@
+package com.example.undistract.features.get_visited_urls.domain
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Log
+import android.util.Patterns
+import android.view.accessibility.AccessibilityNodeInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.net.URL
+
+class VisitedUrlsManager {
+    // Track processed nodes to avoid duplicates
+    private val processedNodeIds = HashSet<Int>()
+
+    fun processNodeTree(
+        node: AccessibilityNodeInfo?,
+        urlCallback: (rawUrl: String, normalizedUrl: String) -> Unit
+    ) {
+        // Clear processed nodes before each traversal
+        processedNodeIds.clear()
+        traverseNodeTree(node) { rawUrl ->
+            val normalizedUrl = normalizeUrl(rawUrl)
+            urlCallback(rawUrl, normalizedUrl)
+        }
+    }
+
+    private fun traverseNodeTree(node: AccessibilityNodeInfo?, urlCallback: (String) -> Unit) {
+        if (node == null) return
+
+        // Skip if we've already processed this node
+        val nodeId = node.hashCode()
+        if (processedNodeIds.contains(nodeId)) return
+        processedNodeIds.add(nodeId)
+
+        // Check node text for URLs
+        node.text?.toString()?.let { text ->
+            extractUrl(text)?.let { url ->
+                urlCallback(url)
+            }
+        }
+
+        // Check content description for URLs
+        node.contentDescription?.toString()?.let { desc ->
+            extractUrl(desc)?.let { url ->
+                urlCallback(url)
+            }
+        }
+
+        // Traverse all child nodes
+        for (i in 0 until node.childCount) {
+            try {
+                node.getChild(i)?.let { traverseNodeTree(it, urlCallback) }
+            } catch (e: Exception) {
+                Log.e("GetVisitedUrlsManager", "Error traversing child node: ${e.message}")
+            }
+        }
+    }
+
+    private fun isIpAddress(text: String): Boolean {
+        return text.matches(Regex("^\\d{1,3}(\\.\\d{1,3}){3}$"))
+    }
+
+    private fun extractUrl(text: String): String? {
+        // Pre-filter: Jangan proses jika tidak ada titik atau terlalu pendek atau tidak mirip URL
+        val cleaned = text.trim()
+        if (cleaned.length < 6 || !cleaned.contains('.') || cleaned.contains(" ")) {
+            return null
+        }
+
+        // Strategy 1: Full URL patterns (standard format)
+        val fullUrlPattern = Patterns.WEB_URL.matcher(text)
+        if (fullUrlPattern.find()) {
+            val fullUrl = fullUrlPattern.group()
+            // Tolak jika IP address atau hanya huruf/angka
+            if (isIpAddress(fullUrl) || fullUrl.matches(Regex("^[a-zA-Z0-9]+$"))) return null
+
+            // Validasi: harus mengandung titik dan bukan angka/huruf doang
+            if (!fullUrl.contains(".") || fullUrl.matches(Regex("^[a-zA-Z0-9]+$"))) return null
+
+            return fullUrl
+        }
+
+        // Strategy 2: Look for domain patterns (common TLDs)
+        val domainPattern = "([a-zA-Z0-9][-a-zA-Z0-9]*\\.)+[a-zA-Z]{2,}".toRegex()
+        val domainMatcher = domainPattern.find(text)
+        domainMatcher?.let {
+            val domain = it.value
+
+            // Validasi tambahan
+            if (domain.length < 6 || !isLikelyValidDomain(domain)) return null
+
+            return domain
+        }
+
+        return null
+    }
+
+    // Metode untuk menormalisasi URL sebelum menyimpan ke database
+    fun normalizeUrl(url: String): String {
+        // Case 1: URL dengan protokol lengkap
+        if (url.startsWith("http://", ignoreCase = true) ||
+            url.startsWith("https://", ignoreCase = true))
+        {
+            return try {
+                val parsedUrl = URL(
+                    if (url.startsWith("http://", true) || url.startsWith("https://", true)) url
+                    else "https://$url" // Tambahkan protokol kalau belum ada agar bisa diparse
+                )
+
+                var host = parsedUrl.host.lowercase()
+
+                // Hapus www. atau m. di depan
+                if (host.startsWith("www.") || host.startsWith("m.")) {
+                    host = host.substringAfter(".")
+                }
+
+                return host
+            } catch (e: Exception) {
+                try {
+                    val uri = Uri.parse(url)
+                    var host = uri.host?.lowercase() ?: return url
+
+                    if (host.startsWith("www.") || host.startsWith("m.")) {
+                        host = host.substringAfter(".")
+                    }
+
+                    return host
+                } catch (e: Exception) {
+                    return url // Kembalikan original jika semua gagal
+                }
+            }
+        }
+        // Case 2: Domain tanpa protokol
+        else {
+            // Hilangkan www jika ada
+            var normalizedUrl = url
+            if (normalizedUrl.startsWith("www.")) {
+                normalizedUrl = normalizedUrl.substring(4)
+            } else if (normalizedUrl.startsWith("m.")) {
+                normalizedUrl = normalizedUrl.substring(2)
+            }
+
+            // Jika ini adalah domain terkenal, gunakan domain saja
+            if (isWellKnownDomain(normalizedUrl)) {
+                // Jika ini domain terkenal yang ada path atau query, potong hanya ambil domain
+                val domainOnly = normalizedUrl.split("/").firstOrNull()
+                return domainOnly ?: normalizedUrl
+            }
+
+            return normalizedUrl
+        }
+    }
+
+    private fun isLikelyValidDomain(domain: String): Boolean {
+        // Common TLDs - add more as needed
+        val commonTlds = listOf(
+            ".com", ".org", ".net", ".io", ".app", ".co", ".edu", ".gov",
+            ".info", ".blog", ".me", ".tv", ".uk", ".us", ".ru", ".de",
+            ".jp", ".cn", ".fr", ".it", ".nl", ".es", ".id", ".au"
+        )
+
+        // Check for common websites
+        val commonSites = listOf(
+            "google", "youtube", "facebook", "instagram", "twitter", "tiktok",
+            "reddit", "linkedin", "github", "amazon", "netflix", "spotify",
+            "whatsapp", "telegram", "pinterest", "snapchat", "twitch"
+        )
+
+        // Check if domain ends with a common TLD
+        val hasTld = commonTlds.any { domain.endsWith(it) }
+
+        // Check if domain contains a common website name
+        val isCommonSite = commonSites.any { domain.contains(it) }
+
+        return hasTld || isCommonSite
+    }
+
+    private fun isWellKnownDomain(domain: String): Boolean {
+        // Daftar domain terkenal yang cukup simpan domain-nya saja
+        val wellKnownDomains = listOf(
+            "youtube.com", "instagram.com", "facebook.com", "twitter.com",
+            "tiktok.com", "reddit.com", "linkedin.com", "github.com",
+            "amazon.com", "netflix.com", "spotify.com", "whatsapp.com",
+            "telegram.org", "pinterest.com", "snapchat.com", "twitch.tv",
+            "google.com", "gmail.com", "yahoo.com", "bing.com",
+            "microsoft.com", "apple.com", "discord.com", "zoom.us"
+        )
+
+        return wellKnownDomains.any { domain.equals(it, ignoreCase = true) ||
+                domain.endsWith(".$it", ignoreCase = true) }
+    }
+
+    suspend fun downloadFavicon(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val parsedUrl = URL(url)
+            val faviconUrl = "${parsedUrl.protocol}://${parsedUrl.host}/favicon.ico"
+            val inputStream = URL(faviconUrl).openStream()
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            outputStream.toByteArray()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+}
