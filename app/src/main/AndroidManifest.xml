@@ -84,6 +84,18 @@
             android:name=".features.usage_limit.presentation.DailyLimitDialogActivity"
             android:theme="@style/Theme.AppCompat.Dialog" />
 
+        <receiver
+            android:name=".features.parental_control.DeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_receiver" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
