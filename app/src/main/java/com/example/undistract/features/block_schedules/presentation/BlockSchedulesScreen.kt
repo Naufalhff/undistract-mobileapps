@@ -82,7 +82,6 @@ fun BlockSchedulesScreen(
         factory = BlockSchedulesViewModelFactory(repository, isParental)
     )
     // Mengambil selected apps
-    selectAppViewModel.updateCurrentRoute("block_schedules")
     val selectedApps = selectAppViewModel.getSelectedIdentifiers()
     val database = AppDatabase.getDatabase(context)
     val blockSchedulesDao = database.blockSchedulesDao()

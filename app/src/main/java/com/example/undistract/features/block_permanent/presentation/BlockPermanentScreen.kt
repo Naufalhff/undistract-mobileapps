@@ -53,7 +53,6 @@ fun BlockPermanentScreen(
         factory = BlockPermanentViewModelFactory(repository, isParental)
     )
 
-    selectAppsViewModel.updateCurrentRoute("block_permanent")
     // Mengambil daftar identifier aplikasi yang dipilih
     val selectedPackageNames = selectAppsViewModel.getSelectedIdentifiers()
 
