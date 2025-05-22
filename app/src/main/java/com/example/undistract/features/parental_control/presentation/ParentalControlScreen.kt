@@ -24,6 +24,7 @@ import androidx.navigation.NavController
 import com.example.undistract.features.authentication.presentation.AuthenticationViewModel
 import com.example.undistract.ui.theme.ColorNew
 import kotlinx.coroutines.launch
+import com.example.undistract.features.parental_control.DeviceAdminUtils
 
 @Composable
 fun ParentalControlScreen(
@@ -32,6 +33,8 @@ fun ParentalControlScreen(
     pinLength: Int = 6
 ) {
     val isVerified by viewModel.isVerified.collectAsState()
+    val context = LocalContext.current
+    var isDeviceAdminActive by remember { mutableStateOf(DeviceAdminUtils.isDeviceAdminActive(context)) }
 
     LaunchedEffect(isVerified) {
         if (isVerified) {
@@ -53,6 +56,22 @@ fun ParentalControlScreen(
                 navController = navController,
             )
         }
+    }
+
+    Row {
+        Text("Proteksi uninstall")
+        Switch(
+            checked = isDeviceAdminActive,
+            onCheckedChange = { checked ->
+                if (checked) {
+                    DeviceAdminUtils.requestEnableDeviceAdmin(context)
+                } else {
+                    DeviceAdminUtils.requestDisableDeviceAdmin(context)
+                }
+                // Perbarui status setelah user kembali ke aplikasi
+                isDeviceAdminActive = DeviceAdminUtils.isDeviceAdminActive(context)
+            }
+        )
     }
 }
 

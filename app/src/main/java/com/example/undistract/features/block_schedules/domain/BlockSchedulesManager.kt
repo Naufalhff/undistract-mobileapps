@@ -33,6 +33,11 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
         val todayIndex = LocalDate.now().dayOfWeek.value % 7
 
         return blockSchedules.any { blockSchedule ->
+            // Cek apakah schedule aktif
+            if (!blockSchedule.isActive) {
+                return@any false // Tidak diblokir jika schedule tidak aktif
+            }
+
             val listType = object : TypeToken<List<Boolean>>() {}.type
             val blockedDays: List<Boolean> = Gson().fromJson(blockSchedule.daysOfWeek, listType)
 

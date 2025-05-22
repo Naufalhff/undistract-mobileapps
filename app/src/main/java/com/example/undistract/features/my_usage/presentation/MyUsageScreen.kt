@@ -26,8 +26,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.usage_stats.UsageStatsManager
 import com.example.undistract.ui.components.ChartType
 import com.example.undistract.ui.components.UsageChart
 import com.example.undistract.ui.theme.Purple40
@@ -38,19 +36,19 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
     val usageViewModel: MyUsageViewModel = viewModel(
         factory = MyUsageViewModelFactory(context)
     )
-    
+
     val appUsageStats by usageViewModel.appUsageStats.collectAsState()
     val hourlyUsageData by usageViewModel.hourlyUsageData.collectAsState()
     val totalUsage by usageViewModel.totalUsage.collectAsState()
-    
+
     // Refresh data when screen appears
     LaunchedEffect(key1 = Unit) {
         usageViewModel.refreshUsageStats()
     }
-    
+
     // Add state to track chart type
     var chartType by remember { mutableStateOf(ChartType.BAR_CHART) }
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -69,7 +67,7 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
-            
+
             IconButton(
                 onClick = { /* Notification or settings */ },
                 modifier = Modifier
@@ -84,7 +82,7 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
                 )
             }
         }
-        
+
         // Usage chart card with chart type buttons
         Card(
             modifier = Modifier
@@ -125,10 +123,10 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
                         )
                     }
                 }
-                
+
                 // Chart
                 UsageChart(
-                    hourlyData = if (hourlyUsageData.isEmpty()) generatePlaceholderData() else hourlyUsageData,
+                    hourlyData = if (hourlyUsageData.isEmpty()) createSampleData() else hourlyUsageData,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(8.dp),
@@ -161,7 +159,7 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
         }
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
-        
+
         // App usage section
         Row(
             modifier = Modifier
@@ -176,7 +174,7 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
                 fontSize = 18.sp
             )
         }
-        
+
         // App usage list
         LazyColumn {
             items(appUsageStats) { appUsage ->
@@ -203,7 +201,7 @@ fun AppUsageItem(appUsage: AppUsageInfo) {
                 .clip(RoundedCornerShape(8.dp)),
             contentScale = ContentScale.Crop
         )
-        
+
         // App info
         Column(
             modifier = Modifier
@@ -215,7 +213,7 @@ fun AppUsageItem(appUsage: AppUsageInfo) {
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp
             )
-            
+
             // Usage progress bar
             LinearProgressIndicator(
                 progress = { appUsage.usagePercentage },
@@ -227,7 +225,7 @@ fun AppUsageItem(appUsage: AppUsageInfo) {
                 trackColor = Color(0xFFE0D0FF)
             )
         }
-        
+
         // Usage time
         Text(
             text = formatDuration(appUsage.usageTimeInMillis),
@@ -241,7 +239,7 @@ fun formatDuration(millis: Long): String {
     val seconds = millis / 1000
     val minutes = seconds / 60
     val hours = minutes / 60
-    
+
     return when {
         hours > 0 -> "${hours}h ${minutes % 60}m"
         minutes > 0 -> "${minutes}m ${seconds % 60}s"
@@ -249,20 +247,24 @@ fun formatDuration(millis: Long): String {
     }
 }
 
-private fun generatePlaceholderData(): List<HourlyUsageData> {
-    // Generate sample data that matches the screenshot pattern
-    return (0..23).map { hour ->
-        val usageTime = when (hour) {
-            18 -> 23 * 60000L  // 23m
-            19 -> 27 * 60000L  // 27m
-            20 -> 18 * 60000L  // 18m
-            21 -> 42 * 60000L  // 42m
-            22 -> 35 * 60000L  // 35m
-            23 -> 5 * 60000L   // 5m
-            0 -> 1 * 60000L    // 1m
-            else -> 0L         // No usage
-        }
-        
-        HourlyUsageData(hour, usageTime)
-    }
+// Creating sample data that matches the screenshot
+private fun createSampleData(): List<HourlyUsageData> {
+    return listOf(
+        HourlyUsageData(5, 30 * 60000L),  // 30m at 5
+        HourlyUsageData(6, 10 * 60000L),  // 10m at 6
+        HourlyUsageData(7, 0L),           // 0m at 7
+        HourlyUsageData(8, 0L),           // 0m at 8
+        HourlyUsageData(9, 0L),           // 0m at 9
+        HourlyUsageData(10, 0L),          // 0m at 10
+        HourlyUsageData(11, 0L),          // 0m at 11
+        HourlyUsageData(12, 0L),          // 0m at 12
+        HourlyUsageData(13, 0L),          // 0m at 13
+        HourlyUsageData(14, 0L),          // 0m at 14
+        HourlyUsageData(15, 0L),          // 0m at 15
+        HourlyUsageData(16, 0L),          // 0m at 16
+        HourlyUsageData(17, 0L),          // 0m at 17
+        HourlyUsageData(18, 0L),          // 0m at 18
+        HourlyUsageData(19, 0L),          // 0m at 19
+        HourlyUsageData(20, 5 * 60000L)   // 5m at 20
+    )
 }

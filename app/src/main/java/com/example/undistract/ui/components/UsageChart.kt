@@ -66,7 +66,7 @@ fun UsageBarChart(
                 setDrawBarShadow(false)
                 setDrawValueAboveBar(true)
                 legend.isEnabled = false
-                
+
                 // Configure X axis
                 xAxis.apply {
                     position = XAxis.XAxisPosition.BOTTOM
@@ -93,44 +93,37 @@ fun UsageBarChart(
                     textColor = AndroidColor.GRAY
                     textSize = 10f
                     axisMinimum = 0f
-                    
-                    // Custom formatter for Y axis
-                    valueFormatter = object : ValueFormatter() {
-                        override fun getFormattedValue(value: Float): String {
-                            return if (value > 0) "${value.toInt()}m" else ""
-                        }
-                    }
+                    isEnabled = false // Hide Y-axis labels as per screenshot
                 }
 
                 // Disable right Y axis
                 axisRight.isEnabled = false
-                
+
                 // Set empty data initially
                 data = BarData()
-                
+
                 // Animation
                 animateY(1000)
-                
+
                 // Set padding
-                setExtraOffsets(8f, 16f, 8f, 8f)
+                setExtraOffsets(8f, 24f, 8f, 8f)
             }
         },
         update = { chart ->
-            // Filter data to show only evening hours (18-23) and early morning (0-1)
-            // as shown in the screenshot
-            val filteredData = hourlyData.filter { it.hour in 18..23 || it.hour in 0..1 }
+            // Filter data to show a limited set of hours - based on the screenshot (around 5-20)
+            val filteredData = hourlyData.filter { it.hour in 5..20 }
                 .sortedBy { it.hour }
-                
+
             // Convert entries for bar chart
             val barEntries = filteredData.map { hourData ->
                 val hour = hourData.hour
                 val minutes = TimeUnit.MILLISECONDS.toMinutes(hourData.usageTimeInMillis).toFloat()
                 BarEntry(hour.toFloat(), minutes)
             }
-            
+
             // Create the dataset
             val barDataSet = BarDataSet(barEntries, "Usage Time").apply {
-                color = Color(0xFF8A65F6).toArgb() // Purple color from screenshot
+                color = Color(0xFF8A65F6).toArgb() // Purple color
                 valueTextSize = 10f
                 valueTextColor = AndroidColor.GRAY
                 valueFormatter = object : ValueFormatter() {
@@ -138,21 +131,28 @@ fun UsageBarChart(
                         return if (value > 0) "${value.toInt()}m" else ""
                     }
                 }
+                setDrawValues(true)
             }
-            
+
             // Update chart data
             chart.data = BarData(barDataSet).apply {
-                barWidth = 0.8f // Wider bars
+                barWidth = 0.5f // Thinner bars like in screenshot
             }
-            
+
             // Calculate Y-axis max value
             val maxUsage = barEntries.maxOfOrNull { it.y } ?: 50f
             chart.axisLeft.axisMaximum = maxUsage * 1.2f
-            
-            // Set X-axis range to show evening and early morning hours
-            chart.xAxis.axisMinimum = 17.5f
-            chart.xAxis.axisMaximum = 1.5f
-            
+
+            // Set X-axis range to show the right hours
+            chart.xAxis.apply {
+                axisMinimum = 4.5f
+                axisMaximum = 20.5f
+                labelCount = 16 // Show all hour labels
+            }
+
+            // Custom value positioning
+            chart.setDrawValueAboveBar(true)
+
             // Refresh the chart
             chart.invalidate()
         }
@@ -185,19 +185,17 @@ fun UsageLineChart(
                 // Configure X axis
                 xAxis.apply {
                     position = XAxis.XAxisPosition.BOTTOM
-                    setDrawGridLines(true)
-                    gridColor = AndroidColor.parseColor("#E0E0E0")
-                    gridLineWidth = 0.5f
+                    setDrawGridLines(false)
                     axisLineColor = AndroidColor.LTGRAY
                     textColor = AndroidColor.GRAY
                     textSize = 10f
-                    granularity = 2f
+                    granularity = 1f
                     valueFormatter = object : ValueFormatter() {
                         override fun getFormattedValue(value: Float): String {
-                            return when (value.toInt()) {
-                                18 -> "18:00"
-                                24 -> "Tengah Malam"
-                                else -> ""
+                            return if (value.toInt() in 5..20) {
+                                value.toInt().toString()
+                            } else {
+                                ""
                             }
                         }
                     }
@@ -210,13 +208,7 @@ fun UsageLineChart(
                     textColor = AndroidColor.GRAY
                     textSize = 10f
                     axisMinimum = 0f
-                    
-                    // Custom formatter for Y axis
-                    valueFormatter = object : ValueFormatter() {
-                        override fun getFormattedValue(value: Float): String {
-                            return if (value > 0) "${value.toInt()}m" else ""
-                        }
-                    }
+                    isEnabled = false // Hide Y-axis labels as per screenshot
                 }
 
                 // Disable right Y axis
@@ -229,14 +221,14 @@ fun UsageLineChart(
                 animateX(1000)
 
                 // Add padding
-                setExtraOffsets(8f, 16f, 8f, 16f)
+                setExtraOffsets(8f, 24f, 8f, 8f)
             }
         },
         update = { chart ->
-            // Filter data to show only evening hours (18-23) and early morning (0-1)
-            val filteredData = hourlyData.filter { it.hour in 18..23 || it.hour in 0..1 }
+            // Filter data to show hours 5-20 as in screenshot
+            val filteredData = hourlyData.filter { it.hour in 5..20 }
                 .sortedBy { it.hour }
-                
+
             // Prepare data entries with converted minutes
             val entries = filteredData.map { hourData ->
                 val hour = hourData.hour.toFloat()
@@ -246,28 +238,27 @@ fun UsageLineChart(
 
             // Create dataset
             val dataSet = LineDataSet(entries, "Usage Time").apply {
-                color = Color(0xFF8A65F6).toArgb() // Purple color from screenshot
+                color = Color(0xFF8A65F6).toArgb() // Purple color
                 lineWidth = 2.5f
                 setDrawCircles(true)
                 setDrawCircleHole(true)
                 circleRadius = 4f
                 circleHoleRadius = 2f
                 setCircleColor(Color(0xFF8A65F6).toArgb())
-                mode = LineDataSet.Mode.CUBIC_BEZIER // Smooth curves
-                
-                // Format values
+
+                // Format values to show minutes
                 valueTextSize = 10f
                 valueTextColor = AndroidColor.GRAY
-                setDrawValues(false)
-                
+                setDrawValues(true)
+                valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return if (value > 0) "${value.toInt()}m" else ""
+                    }
+                }
+
                 // Add highlight marker
                 setDrawHighlightIndicators(true)
                 highlightLineWidth = 1f
-                
-                // Fill area under the line
-                setDrawFilled(true)
-                fillColor = Color(0x508A65F6).toArgb() // Semi-transparent purple
-                fillAlpha = 80
             }
 
             // Update chart data
@@ -278,29 +269,11 @@ fun UsageLineChart(
             chart.axisLeft.axisMaximum = maxUsage * 1.2f
 
             // Set X-axis range
-            chart.xAxis.axisMinimum = 17.5f
-            chart.xAxis.axisMaximum = 1.5f
+            chart.xAxis.axisMinimum = 4.5f
+            chart.xAxis.axisMaximum = 20.5f
 
             // Refresh the chart
             chart.invalidate()
         }
     )
-}
-
-private fun generatePlaceholderData(): List<HourlyUsageData> {
-    // Generate sample data that matches the screenshot pattern
-    return (0..23).map { hour ->
-        val usageTime = when (hour) {
-            18 -> 23 * 60000L  // 23m
-            19 -> 27 * 60000L  // 27m
-            20 -> 18 * 60000L  // 18m
-            21 -> 42 * 60000L  // 42m
-            22 -> 35 * 60000L  // 35m
-            23 -> 5 * 60000L   // 5m
-            0 -> 1 * 60000L    // 1m
-            else -> 0L         // No usage
-        }
-        
-        HourlyUsageData(hour, usageTime)
-    }
 }
