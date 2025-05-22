@@ -77,20 +77,7 @@ import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimit
 import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
-import com.example.undistract.R
-import android.util.Log
-import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.icons.filled.Close
 import kotlinx.coroutines.delay
-
-import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModelFactory
-import com.example.undistract.ui.navigation.BottomNavItem
-import com.example.undistract.ui.theme.Purple40
-import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,8 +114,6 @@ fun SetDailyUsageLimitScreen(
     var disruptionExpanded by remember { mutableStateOf(false) }
     var selectedDisruptionOption by remember { mutableStateOf("Head Notification") }
     val disruptionOptions = listOf("Head Notification", "Pop Up Notification", "Block Application")
-    var selectedLimitOption by remember { mutableStateOf("Set a Daily Usage Limit") }
-    val selectedApps by remember { mutableStateOf(viewModel.getSelectedAppsInfo()) }
     var expanded by remember { mutableStateOf(false) }
     val limitOptions = remember { listOf("Set a Daily Usage Limit", "Block Permanently", "Block on a Schedule") }
     var selectedLimitOption by remember { mutableStateOf(limitOptions[0]) }

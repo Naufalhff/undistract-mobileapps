@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity

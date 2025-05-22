@@ -61,6 +61,7 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
@@ -87,11 +88,13 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     }
 
     val blockPermanentDao = remember { database.blockPermanentDao() }
+    val blockSchedulesDao = remember { database.blockSchedulesDao() }
     val variableSessionDao = remember { database.variableSessionDao() }
     val visitedUrlsDao = remember { database.visitedUrlsDao() }
 
     val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
     val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
+    val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
     val visitedUrlsRepository = remember { VisitedUrlsRepository(visitedUrlsDao) }
 
     val selectAppsViewModel = runCatching {
@@ -105,7 +108,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
 
 
     val blockPermanentViewModel: BlockPermanentViewModel = viewModel(
-        factory = BlockPermanentViewModelFactory(blockPermanentRepository)
+        factory = BlockPermanentViewModelFactory(blockPermanentRepository, isParental)
     )
 
     val blockSchedulesViewModel: BlockSchedulesViewModel = viewModel(
@@ -113,7 +116,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     )
 
     val variableSessionViewModel: VariableSessionViewModel = viewModel(
-        factory = VariableSessionViewModelFactory(variableSessionRepository)
+        factory = VariableSessionViewModelFactory(variableSessionRepository, isParental)
     )
 
     Column (
@@ -163,11 +166,10 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
 
             // SECTION 4: MAIN SECTION
             when (currentMainSection) {
-                "base" -> BaseSection(onSectionChange = { currentMainSection = it }, isParental = isParental)
+                "base" -> BaseSection(onSectionChange = { currentMainSection = it })
                 "block_permanent" -> selectAppsViewModel?.let {
                     BlockPermanentScreen(
                         navController = navController,
-                        blockPermanentViewModel = blockPermanentViewModel,
                         selectAppsViewModel = it,
                         repository = blockPermanentRepository,
                         isParental = isParental
@@ -177,15 +179,17 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                     BlockSchedulesScreen(
                         navController = navController,
                         selectAppViewModel = it,
-                        viewModel = blockSchedulesViewModel
+                        repository = blockSchedulesRepository,
+                        isParental = isParental
                     )
                 }
 //                "daily_limit" -> SetDailyUsageLimitScreen()
                 "session_limit" -> selectAppsViewModel?.let {
                     VariableSessionScreen(
                         navController = navController,
-                        viewModel = variableSessionViewModel,
-                        selectAppViewModel = it
+                        selectAppViewModel = it,
+                        repository = variableSessionRepository,
+                        isParental = isParental
                     )
                 }
             }

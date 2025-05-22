@@ -38,7 +38,6 @@ import com.example.undistract.features.block_schedules.presentation.BlockSchedul
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
-import com.example.undistract.navigation.SelectedAppsRouteObserver
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
@@ -96,7 +95,8 @@ fun AppNavHost(context: Context) {
 
     Scaffold(
         bottomBar = {
-            val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+            val currentRoute =
+                navController.currentBackStackEntryAsState().value?.destination?.route
             if (currentRoute !in routesWithoutNavBar) {
                 BottomNavigationBar(navController)
             }
@@ -118,7 +118,10 @@ fun AppNavHost(context: Context) {
                 )
             }
             composable(BottomNavItem.ParentalControl.route) {
-                ParentalControlScreen(navController = navController, viewModel = authenticationViewModel)
+                ParentalControlScreen(
+                    navController = navController,
+                    viewModel = authenticationViewModel
+                )
             }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
@@ -136,155 +139,162 @@ fun AppNavHost(context: Context) {
                 {
                     SelectAppsScreen(navController = navController)
                 }
-            composable("parental_usage_limit?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                UsageLimitScreen(
-                    navController = navController,
-                    context = context,
-                    viewModel = selectAppsViewModel,
-                    isParental = isParental
-                )
-            }
-            composable("add_restriction?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                AddRestrictionScreen(
-                    navController = navController,
-                    viewModel = selectAppsViewModel,
-                    isParental = isParental,
-                )
-            }
-            composable("select_apps") {
-                SelectAppsScreen(
-                    context = context,
-                    navController = navController,
-                    viewModel = selectAppsViewModel
-                )
-            }
-
-            composable("block_permanent?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                BlockPermanentScreen(
-                    navController = navController,
-                    selectAppsViewModel = selectAppsViewModel,
-                    repository = blockPermanentRepository,
-                    isParental = isParental
-                )
-            }
-
-            composable("block_schedules?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                BlockSchedulesScreen(
-                    navController = navController,
-                    isParental = isParental,
-                    repository = blockSchedulesRepository,
-                    selectAppViewModel = selectAppsViewModel
-                )
-            }
-
-            composable("variable_session?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                VariableSessionScreen(
-                    navController = navController,
-                    repository = variableSessionRepository,
-                    selectAppViewModel = selectAppsViewModel,
-                    isParental = isParental
-                )
-            }
-            composable("set_daily_limit?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                val usageLimitViewModel: UsageLimitViewModel = viewModel(
-                    factory = UsageLimitViewModelFactory(
-                        repository = SetaDailyLimitRepositoryImpl(
-                            AppDatabase.getDatabase(context).setaDailyLimitDao()
-                        ),
-                        blockSchedulesRepository = blockSchedulesRepository,
-                        variableSessionRepository = variableSessionRepository,
-                        blockPermanentRepository = blockPermanentRepository,
+                composable(
+                    "parental_usage_limit?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    UsageLimitScreen(
+                        navController = navController,
+                        context = context,
+                        viewModel = selectAppsViewModel,
                         isParental = isParental
                     )
-                )
-                SetDailyUsageLimitScreen(
-                    navController = navController,
-                    viewModel = selectAppsViewModel,
-                    usageLimitViewModel = usageLimitViewModel,
-                    isParental = isParental
-                )
-            }
-            composable("editUsageLimit?isParental={isParental}",
-                arguments = listOf(navArgument("isParental") {
-                    defaultValue = false
-                    type = NavType.BoolType
-                })
-            ) { backStackEntry ->
-                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                EditUsageLimitScreen(
-                    context = context,
-                    navController = navController,
-                    viewModel = selectAppsViewModel,
-                    isParental = isParental
-                )
-            }
-            composable("verifyOtp?email={email}",
-                arguments = listOf(navArgument("email") {
-                    defaultValue = ""
-                    type = NavType.StringType
-                })
-            ) { backStackEntry ->
-                val email = backStackEntry.arguments?.getString("email") ?: ""
-                VerifyOTPScreen(
-                    navController = navController,
-                    viewModel = authenticationViewModel,
-                    email = email
-                )
-            }
-            composable("createPin?email={email}",
-                arguments = listOf(navArgument("email") {
-                    defaultValue = ""
-                    type = NavType.StringType
-                })
-            ) { backStackEntry ->
-                val email = backStackEntry.arguments?.getString("email") ?: ""
-                CreatePINScreen(
-                    navController = navController,
-                    viewModel = authenticationViewModel,
-                    email = email
-                )
-            }
-            composable("resetPin"){
-                ResetPINScreen(
-                    navController = navController,
-                    viewModel = authenticationViewModel
-                )
+                }
+                composable(
+                    "add_restriction?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    AddRestrictionScreen(
+                        navController = navController,
+                        isParental = isParental,
+                    )
+                }
+                composable("select_apps") {
+                    SelectAppsScreen(
+                        navController = navController
+                    )
+                }
+
+                composable(
+                    "block_permanent?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    BlockPermanentScreen(
+                        navController = navController,
+                        selectAppsViewModel = selectAppsViewModel,
+                        repository = blockPermanentRepository,
+                        isParental = isParental
+                    )
+                }
+
+                composable(
+                    "block_schedules?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    BlockSchedulesScreen(
+                        navController = navController,
+                        isParental = isParental,
+                        repository = blockSchedulesRepository,
+                        selectAppViewModel = selectAppsViewModel
+                    )
+                }
+
+                composable(
+                    "variable_session?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    VariableSessionScreen(
+                        navController = navController,
+                        repository = variableSessionRepository,
+                        selectAppViewModel = selectAppsViewModel,
+                        isParental = isParental
+                    )
+                }
+                composable(
+                    "set_daily_limit?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    val usageLimitViewModel: UsageLimitViewModel = viewModel(
+                        factory = UsageLimitViewModelFactory(
+                            repository = SetaDailyLimitRepositoryImpl(
+                                AppDatabase.getDatabase(context).setaDailyLimitDao()
+                            ),
+                            blockSchedulesRepository = blockSchedulesRepository,
+                            variableSessionRepository = variableSessionRepository,
+                            blockPermanentRepository = blockPermanentRepository,
+                            isParental = isParental
+                        )
+                    )
+                    SetDailyUsageLimitScreen(
+                        navController = navController,
+                        viewModel = selectAppsViewModel,
+                        usageLimitViewModel = usageLimitViewModel,
+                        isParental = isParental
+                    )
+                }
+                composable(
+                    "editUsageLimit?isParental={isParental}",
+                    arguments = listOf(navArgument("isParental") {
+                        defaultValue = false
+                        type = NavType.BoolType
+                    })
+                ) { backStackEntry ->
+                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                    EditUsageLimitScreen(
+                        context = context,
+                        navController = navController,
+                        viewModel = selectAppsViewModel,
+                        isParental = isParental
+                    )
+                }
+                composable(
+                    "verifyOtp?email={email}",
+                    arguments = listOf(navArgument("email") {
+                        defaultValue = ""
+                        type = NavType.StringType
+                    })
+                ) { backStackEntry ->
+                    val email = backStackEntry.arguments?.getString("email") ?: ""
+                    VerifyOTPScreen(
+                        navController = navController,
+                        viewModel = authenticationViewModel,
+                        email = email
+                    )
+                }
+                composable(
+                    "createPin?email={email}",
+                    arguments = listOf(navArgument("email") {
+                        defaultValue = ""
+                        type = NavType.StringType
+                    })
+                ) { backStackEntry ->
+                    val email = backStackEntry.arguments?.getString("email") ?: ""
+                    CreatePINScreen(
+                        navController = navController,
+                        viewModel = authenticationViewModel,
+                        email = email
+                    )
+                }
+                composable("resetPin") {
+                    ResetPINScreen(
+                        navController = navController,
+                        viewModel = authenticationViewModel
+                    )
+                }
             }
         }
     }

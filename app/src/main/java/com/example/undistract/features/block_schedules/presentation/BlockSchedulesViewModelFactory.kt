@@ -8,7 +8,8 @@ import com.example.undistract.features.block_schedules.data.BlockSchedulesReposi
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 
 class BlockSchedulesViewModelFactory(
-    private val context: Context
+    private val context: Context,
+    private val isParental:Boolean = false
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -18,7 +19,7 @@ class BlockSchedulesViewModelFactory(
             val repository = BlockSchedulesRepository(dao)
 
             @Suppress("UNCHECKED_CAST")
-            return BlockSchedulesViewModel(repository) as T
+            return BlockSchedulesViewModel(repository, isParental) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

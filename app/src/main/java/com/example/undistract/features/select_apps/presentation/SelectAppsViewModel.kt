@@ -59,11 +59,6 @@ class SelectAppsViewModel(
         }
     }
 
-    // Update rute saat ini
-    fun updateCurrentRoute(route: String) {
-        selectAppsRepository.setCurrentRoute(route)
-    }
-
     fun toggleAppSelection(identifier: String, isSelected: Boolean) {
         selectedApps[identifier] = isSelected
         selectAppsRepository.toggleAppSelection(identifier, isSelected)

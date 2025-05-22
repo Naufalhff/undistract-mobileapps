@@ -193,13 +193,6 @@ fun VariableSessionScreen(
             )
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            GetAppInfo(context, selectedApps)
-        }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()

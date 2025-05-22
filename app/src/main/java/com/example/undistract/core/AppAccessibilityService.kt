@@ -3,8 +3,6 @@ package com.example.undistract.core
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
@@ -18,16 +16,15 @@ import com.example.undistract.features.variable_session.data.VariableSessionRepo
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
-import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
-import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
+import android.os.Handler
+import android.os.Looper
+
 
 
 class AppAccessibilityService : AccessibilityService() {
@@ -39,8 +36,6 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
-    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
-    private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
@@ -62,9 +57,8 @@ class AppAccessibilityService : AccessibilityService() {
         val blockPermanentDao = database.blockPermanentDao()
         val blockSchedulesDao = database.blockSchedulesDao()
         val variableSessionDao = database.variableSessionDao()
-        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
-        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
 
+        blockPermanentRepository = BlockPermanentRepository(blockPermanentDao)
         visitedUrlsRepository = VisitedUrlsRepository(visitedUrlsDao)
 
         // Inisialisasi manager
@@ -72,7 +66,6 @@ class AppAccessibilityService : AccessibilityService() {
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
-        usageStatsManager = UsageStatsManager(this)
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -80,7 +73,6 @@ class AppAccessibilityService : AccessibilityService() {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             notificationTimeout = 100
-            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         }
         serviceInfo = info
     }
@@ -197,11 +189,6 @@ class AppAccessibilityService : AccessibilityService() {
     }
 
     private fun handleAppBlocking(currentIdentifier: String, currentTime: LocalTime) {
-        if (packageName == context.packageName) {
-            Log.d("DEBUG_ACCESSIBILITY", "Aplikasi Undistract dibuka, skip dialog")
-            return
-        }
-
         serviceScope.launch {
             // BLOCK ON SCHEDULES
             if (blockScheduleManager.shouldBlockApp(currentIdentifier, currentTime)) {
@@ -277,27 +264,5 @@ class AppAccessibilityService : AccessibilityService() {
                 Log.d("AccessibilityService", "Blocked apps not initialized yet.")
             }
         }
-    }
-}
-
-    override fun onInterrupt() {
-        Log.d("BlockApp", "Service terputus!")
-    }
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
-
-    private fun loadBlockedApps() {
-        coroutineScope.launch {
-            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
-                blockedApps = apps
-                Log.d("AccessibilityService", "Blocked apps loaded: ${blockedApps.map { it.packageName }}")
-            }
-        }
-    }
-    private fun isAppBlocked(packageName: String): Boolean {
-        return blockedApps.any { it.packageName == packageName && it.isActive }
-    }
-
-    private fun getAppName(packageName: String): String {
-        return blockedApps.find { it.packageName == packageName }?.appName ?: packageName
     }
 }

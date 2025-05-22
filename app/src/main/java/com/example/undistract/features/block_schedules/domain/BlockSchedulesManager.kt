@@ -29,7 +29,8 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
         val blockSchedules = dao.getBlockSchedules(packageName)
         Log.d("DATABASE_TEST", "blockschedules: $blockSchedules")
 
-        // Ambil hari saat ini dalam bentuk indeks
+        if (blockSchedules.none { it.isActive }) return false
+
         val todayIndex = LocalDate.now().dayOfWeek.value % 7
 
         return blockSchedules.any { blockSchedule ->
@@ -48,9 +49,7 @@ class BlockScheduleManager(private val context: Context, private val dao: BlockS
             Log.d("BLOCK_TEST", "Blocked days: $blockedDays")
             Log.d("BLOCK_TEST", "Is blocked today: $isBlockedToday")
 
-            if (!isBlockedToday) {
-                return@any false // Tidak diblokir hari ini
-            }
+            if (!isBlockedToday) return@any false
 
             val startTime = LocalTime.parse(blockSchedule.startTime)
             val endTime = LocalTime.parse(blockSchedule.endTime)
