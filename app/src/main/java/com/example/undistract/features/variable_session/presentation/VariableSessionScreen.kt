@@ -15,28 +15,56 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.R
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
-import com.example.undistract.ui.theme.ColorNew
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
+import com.example.undistract.R
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.ui.components.BackButton
+import com.example.undistract.ui.theme.ColorNew
+import kotlinx.coroutines.launch
 
 @Composable
 fun VariableSessionScreen(
@@ -56,12 +84,16 @@ fun VariableSessionScreen(
     var coolDownMinutes by remember { mutableStateOf("") }
 
     // Mengambil selected apps
-    selectAppViewModel.updateCurrentRoute("variable_session")
-    val selectedApps = selectAppViewModel.getSelectedApps()
-    val database = AppDatabase.getDatabase(context)
-    val variableSessionDao = database.variableSessionDao()
-    val variableSessionManager = VariableSessionManager(context, variableSessionDao)
-    val listApps = variableSessionManager.getAppInfoFromPackageNames(context, selectedApps)
+    val selectedApps = selectAppViewModel.getSelectedIdentifiers()
+    var listApps by remember { mutableStateOf<List<AppOrUrlItem>>(emptyList()) }
+
+    val combinedItems by selectAppViewModel.combinedItems.collectAsState()
+
+    LaunchedEffect(selectedApps, combinedItems) {
+        listApps = combinedItems.filter { item ->
+            selectedApps.contains(item.identifier)
+        }
+    }
 
     if (showDialog) {
         Box(
@@ -257,8 +289,9 @@ fun VariableSessionScreen(
                                 if (selectedApps.isEmpty()) {
                                     Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
                                 } else {
+                                    val appsToSave = listApps.map { app -> app.name to app.identifier }
                                     viewModel.addVariableSession(
-                                        apps = listApps,
+                                        apps = appsToSave,
                                         secondsLeft = 0,
                                         coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
                                         coolDownEndTime = null,
@@ -395,60 +428,4 @@ fun calculate(minutes: String, hours: String): Int {
     val min = minutes.toIntOrNull() ?: 0
     val hr = hours.toIntOrNull() ?: 0
     return (min + (hr * 60)) * 60
-}
-
-@Composable
-fun GetAppInfo(context: Context, packageName: List<String>) {
-    val packageManager = context.packageManager
-
-    val app = try {
-        packageManager.getApplicationInfo(packageName.firstOrNull()?: "", PackageManager.GET_META_DATA)
-    } catch (e: PackageManager.NameNotFoundException) {
-        null
-    }
-
-    if (app != null) {
-        val appInfo = AppInfo(
-            name = packageManager.getApplicationLabel(app).toString(),
-            packageName = app.packageName,
-            icon = app.loadIcon(packageManager)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text("Selected Apps:", style = MaterialTheme.typography.labelLarge)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            )  {
-                Image(
-                    painter = rememberAsyncImagePainter(appInfo.icon),
-                    contentDescription = appInfo.name,
-                    modifier = Modifier.size(36.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                val displayText = when {
-                    packageName.isEmpty() -> "No apps selected"
-                    packageName.size == 1 -> appInfo.name
-                    else -> "${appInfo.name}, and ${packageName.size - 1} more"
-                }
-
-                Text(
-                    text = displayText,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    } else {
-        Text("No app selected", style = MaterialTheme.typography.bodyLarge)
-    }
 }

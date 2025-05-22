@@ -74,7 +74,20 @@ import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
+import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.R
+import android.util.Log
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material.icons.filled.Close
+import kotlinx.coroutines.delay
+
+import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModelFactory
 import com.example.undistract.ui.navigation.BottomNavItem
 import com.example.undistract.ui.theme.Purple40
 import kotlinx.coroutines.launch
@@ -116,6 +129,10 @@ fun SetDailyUsageLimitScreen(
     val disruptionOptions = listOf("Head Notification", "Pop Up Notification", "Block Application")
     var selectedLimitOption by remember { mutableStateOf("Set a Daily Usage Limit") }
     val selectedApps by remember { mutableStateOf(viewModel.getSelectedAppsInfo()) }
+    var expanded by remember { mutableStateOf(false) }
+    val limitOptions = remember { listOf("Set a Daily Usage Limit", "Block Permanently", "Block on a Schedule") }
+    var selectedLimitOption by remember { mutableStateOf(limitOptions[0]) }
+    val selectedApps by remember { mutableStateOf(viewModel.getSelectedItems()) }
     var showAppsDialog by remember { mutableStateOf(false) }
 
     // Time options lists
@@ -542,7 +559,7 @@ fun SetDailyUsageLimitScreen(
                         try {
                             Log.d("SetaDailyLimit", "Save button clicked")
                             val timeLimitMinutes = (selectedHours.toInt() * 60) + selectedMinutes.toInt()
-                            val selectedAppsInfo = viewModel.getSelectedAppsInfo()
+                            val selectedAppsInfo = viewModel.getSelectedItems()
 
                             Log.d("SetaDailyLimit", "Selected apps: ${selectedAppsInfo.size}, time limit: $timeLimitMinutes minutes")
 
@@ -564,7 +581,7 @@ fun SetDailyUsageLimitScreen(
 
                                     SetaDailyLimitEntity(
                                         appName = app.name,
-                                        packageName = app.packageName,
+                                        packageName = app.identifier,
                                         icon = iconString,
                                         timeLimitMinutes = timeLimitMinutes,
                                         isParental = isParental,

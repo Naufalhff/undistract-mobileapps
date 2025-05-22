@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,16 +23,40 @@ class SetaDailyLimitViewModel(
 ) : ViewModel() {
     private val TAG = "SetaDailyLimitViewModel"
 
+    private val _combinedItems = MutableStateFlow<List<AppOrUrlItem>>(emptyList())
+    val combinedItems: StateFlow<List<AppOrUrlItem>> = _combinedItems.asStateFlow()
+
+    val selectedApps = mutableStateMapOf<String, Boolean>()
+
     private val _saveResult = MutableStateFlow<SaveResult>(SaveResult.Idle)
     val saveResult: StateFlow<SaveResult> = _saveResult.asStateFlow()
 
     private val _dailyLimits = MutableStateFlow<List<SetaDailyLimitEntity>>(emptyList())
+    val dailyLimits: StateFlow<List<SetaDailyLimitEntity>> = _dailyLimits.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.getAll(isParental).collect { limits ->
                 Log.d(TAG, "Received ${limits.size} limits from database")
                 _dailyLimits.value = limits
+            }
+        }
+    }
+
+    fun addDailyLimit(setaDailyLimitEntity: SetaDailyLimitEntity) {
+        viewModelScope.launch {
+            _saveResult.value = SaveResult.Loading
+            try {
+                Log.d(TAG, "Adding daily limit for: ${setaDailyLimitEntity.appName}")
+                val id = withContext(Dispatchers.IO) {
+                    repository.insert(setaDailyLimitEntity)
+                }
+                Log.d(TAG, "Daily limit added successfully with ID: $id")
+                _saveResult.value = SaveResult.Success
+            } catch (e: Exception) {
+                Log.e(TAG, "Error adding daily limit", e)
+                e.printStackTrace()
+                _saveResult.value = SaveResult.Error(e.message ?: "Unknown error")
             }
         }
     }
