@@ -23,4 +23,9 @@ interface BlockPermanentDao {
     @Query("SELECT * FROM block_permanent_table WHERE isActive = 1")
      fun getActiveBlockPermanent(): Flow<List<BlockPermanentEntity>>
 
+    @Query("SELECT * FROM block_permanent_table")
+    fun getAllBlockPermanent(): Flow<List<BlockPermanentEntity>>
+
+    @Query("SELECT * FROM block_permanent_table WHERE isParental = :isParental")
+    fun getBlockPermanentByParentalFlag(isParental: Boolean): Flow<List<BlockPermanentEntity>>
 }

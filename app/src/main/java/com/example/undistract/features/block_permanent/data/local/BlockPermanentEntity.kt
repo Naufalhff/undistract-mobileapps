@@ -8,5 +8,6 @@ data class BlockPermanentEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val appName: String,
     val packageName: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val isParental: Boolean = false
 )

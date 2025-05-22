@@ -1,5 +1,6 @@
 package com.example.undistract.features.add_behavior.presentation
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,11 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,9 +46,20 @@ import com.example.undistract.ui.navigation.BottomNavItem
 @Composable
 fun AddRestrictionScreen(
     navController: NavHostController,
-    viewModel: SelectAppsViewModel
+    viewModel: SelectAppsViewModel,
+    isParental: Boolean = false
 ) {
     viewModel.updateCurrentRoute("add_restriction")
+
+    // For dropdown state
+    var expanded by remember { mutableStateOf(false) }
+    var selectedOption by remember { mutableStateOf("Head Notification") }
+    val options = listOf("Head Notification", "Pop Up Notification", "Block Application")
+
+    // Update selected notification type in ViewModel
+    LaunchedEffect(selectedOption) {
+        viewModel.updateSelectedNotificationType(selectedOption)
+    }
 
     Column (
         modifier = Modifier
@@ -63,7 +78,13 @@ fun AddRestrictionScreen(
         ) {
             BackButton (
                 modifier = Modifier.size(24.dp),
-                onClick = { navController.navigate(BottomNavItem.UsageLimit.route)}
+                onClick = {
+                    if (isParental){
+                        navController.navigate("parental_usage_limit?isParental=true")
+                    } else {
+                        navController.navigate(BottomNavItem.UsageLimit.route)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -121,13 +142,13 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_permanently),
-                        onClick = { navController.navigate("block_permanent") }
+                        onClick = { navController.navigate("block_permanent?isParental=$isParental") }
                     )
 
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.block_on_a_schedule),
-                        onClick = { navController.navigate("block_schedules") }
+                        onClick = { navController.navigate("block_schedules?isParental=$isParental") }
                     )
                 }
 
@@ -141,14 +162,94 @@ fun AddRestrictionScreen(
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.restrict_daily_usage),
-                        onClick = { navController.navigate("set_daily_limit") }
+                        onClick = { navController.navigate("set_daily_limit?isParental=$isParental") }
                     )
 
                     FlexboxItem(
                         icon = Icons.Default.Star,
                         label = stringResource(R.string.apply_custom_session_restriction),
-                        onClick = { navController.navigate("variable_session") }
+                        onClick = { 
+                            navController.navigate("variable_session?isParental=$isParental") 
+                            viewModel.updateSelectedNotificationType(selectedOption)
+                        }
                     )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // DISRUPTION OPTIONS DROPDOWN
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = "Disruption Options",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 15.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .background(MaterialTheme.colorScheme.background)
+                            .clickable { expanded = true }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedOption,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 14.sp
+                            )
+
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Dropdown",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            options.forEach { option ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = option,
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedOption = option
+                                        expanded = false
+                                        viewModel.updateSelectedNotificationType(option)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

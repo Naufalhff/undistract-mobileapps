@@ -9,13 +9,14 @@ import kotlinx.coroutines.withContext
 
 interface SetaDailyLimitRepository {
     suspend fun insert(setaDailyLimitEntity: SetaDailyLimitEntity): Long
-    fun getAll(): Flow<List<SetaDailyLimitEntity>>
+    fun getAll(isParental: Boolean): Flow<List<SetaDailyLimitEntity>>
     suspend fun getByPackageName(packageName: String): SetaDailyLimitEntity?
     suspend fun deleteById(id: Int)
     suspend fun deleteByPackageName(packageName: String)
     suspend fun toggleActiveState(id: Int, isActive: Boolean)
     suspend fun update(entity: SetaDailyLimitEntity)
-    suspend fun getAllSync(): List<SetaDailyLimitEntity>
+    suspend fun getAllSync(isParental: Boolean): List<SetaDailyLimitEntity>
+    suspend fun getAllSyncNoParental(): List<SetaDailyLimitEntity>
     suspend fun getById(id: Int): SetaDailyLimitEntity?
     suspend fun deleteLimit(id: Int)
     suspend fun deleteDailyLimitById(id: Int)
@@ -32,14 +33,13 @@ class SetaDailyLimitRepositoryImpl(private val dao: SetaDailyLimitDao) : SetaDai
             return id
         } catch (e: Exception) {
             Log.e(TAG, "Error inserting limit", e)
-            e.printStackTrace()
-            throw e  // Re-throw exception to be caught by ViewModel
+            throw e
         }
     }
 
-    override fun getAll(): Flow<List<SetaDailyLimitEntity>> {
+    override fun getAll(isParental: Boolean): Flow<List<SetaDailyLimitEntity>> {
         Log.d(TAG, "Getting all daily limits")
-        return dao.getAll()
+        return dao.getAll(isParental = isParental)
     }
 
     override suspend fun getByPackageName(packageName: String): SetaDailyLimitEntity? {
@@ -54,7 +54,6 @@ class SetaDailyLimitRepositoryImpl(private val dao: SetaDailyLimitDao) : SetaDai
             Log.d(TAG, "Delete successful")
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting limit", e)
-            e.printStackTrace()
             throw e
         }
     }
@@ -66,7 +65,6 @@ class SetaDailyLimitRepositoryImpl(private val dao: SetaDailyLimitDao) : SetaDai
             Log.d(TAG, "Delete successful")
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting limit", e)
-            e.printStackTrace()
             throw e
         }
     }
@@ -78,7 +76,6 @@ class SetaDailyLimitRepositoryImpl(private val dao: SetaDailyLimitDao) : SetaDai
             Log.d(TAG, "Toggle successful")
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling active state", e)
-            e.printStackTrace()
             throw e
         }
     }
@@ -90,22 +87,28 @@ class SetaDailyLimitRepositoryImpl(private val dao: SetaDailyLimitDao) : SetaDai
             Log.d(TAG, "Update successful")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating entity", e)
-            e.printStackTrace()
             throw e
         }
     }
 
-    // Get all limits synchronously (not as Flow)
-    override suspend fun getAllSync(): List<SetaDailyLimitEntity> {
+    override suspend fun getAllSync(isParental: Boolean): List<SetaDailyLimitEntity> {
         return try {
-            dao.getAllSync()
+            dao.getAllSync(isParental)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting all limits synchronously", e)
             emptyList()
         }
     }
 
-    // Get app by ID
+    override suspend fun getAllSyncNoParental(): List<SetaDailyLimitEntity> {
+        return try {
+            dao.getAllSyncNoParental()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting all limits synchronously", e)
+            emptyList()
+        }
+    }
+
     override suspend fun getById(id: Int): SetaDailyLimitEntity? {
         return try {
             dao.getById(id)

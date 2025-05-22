@@ -1,13 +1,19 @@
 package com.example.undistract
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +29,10 @@ import com.example.undistract.ui.theme.UndistractTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val REQUEST_CODE_OVERLAY_PERMISSION = 1001
+    }
+
     private lateinit var installedApps: List<AppInfo>
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -42,6 +52,9 @@ class MainActivity : ComponentActivity() {
 
         // Check and request notification permission on Android 13+
         checkNotificationPermission()
+        
+        // Check and request overlay permission
+        checkOverlayPermission()
 
         // Start the monitoring service
         startMonitoringService()
@@ -65,6 +78,19 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun checkOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
+            Toast.makeText(this, 
+                "Aplikasi memerlukan izin untuk menampilkan dialog di atas aplikasi lain", 
+                Toast.LENGTH_LONG).show()
         }
     }
 

@@ -4,12 +4,16 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface VariableSessionDao {
     @Query("SELECT * FROM variable_session_table")
     fun getAllVariableSession(): Flow<List<VariableSessionEntity>>
+
+    @Query("SELECT * FROM variable_session_table WHERE isParental = :isParental")
+    fun getVariableSessionByParentalFlag(isParental: Boolean): Flow<List<VariableSessionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVariableSession(data: VariableSessionEntity)

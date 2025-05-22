@@ -11,6 +11,9 @@ interface BlockSchedulesDao {
     @Query("SELECT * FROM block_schedules_table")
     fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>>
 
+    @Query("SELECT * FROM block_schedules_table WHERE isParental = :isParental")
+    fun getSchedulesByParentalFlag(isParental: Boolean): Flow<List<BlockSchedulesEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBlockSchedules(data: BlockSchedulesEntity)
 
@@ -19,4 +22,8 @@ interface BlockSchedulesDao {
 
     @Query("DELETE FROM block_schedules_table WHERE id = :id")
     suspend fun deleteBlockSchedules(id: Int)
+
+    @Query("UPDATE block_schedules_table SET isActive = :isActive WHERE id = :id")
+    suspend fun updateBlockScheduleActiveState(id: Int, isActive: Boolean)
 }
+

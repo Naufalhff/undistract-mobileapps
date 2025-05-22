@@ -40,10 +40,12 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+fun EditUsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel, isParental: Boolean = false) {
     val sharedViewModel: SharedViewModel = viewModel()
     val appLimitInfo by sharedViewModel.appLimitInfo.collectAsState()
 
@@ -60,7 +62,16 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
             ),
             blockPermanentRepository = BlockPermanentRepository(
                 AppDatabase.getDatabase(context).blockPermanentDao()
-            )
+            ),
+            isParental = isParental
+        )
+    )
+
+    // Access VariableSessionViewModel
+    val variableSessionViewModel: VariableSessionViewModel = viewModel(
+        factory = VariableSessionViewModelFactory(
+            VariableSessionRepository(AppDatabase.getDatabase(context).variableSessionDao()),
+            isParental
         )
     )
 
@@ -334,28 +345,28 @@ fun EditUsageLimitScreen(context: Context, navController: NavHostController, vie
                             var deleteCount = 0
                             try {
                                 // Delete selected daily limits
-//                                limitedUsageApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteDailyLimitById(app.id)
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected block schedules
-//                                blockedScheduleApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteBlockScheduleById(app.id)
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected variable sessions
-//                                variableSessionApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteVariableSessionById(app.id.toString())
-//                                    deleteCount++
-//                                }
-//
-//                                // Delete selected permanent blocks
-//                                permanentlyBlockedApps.filter { it.isBlocked }.forEach { app ->
-//                                    usageLimitViewModel.deleteBlockPermanentById(app.id)
-//                                    deleteCount++
-//                                }
+                                limitedUsageApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteDailyLimitById(app.id)
+                                    deleteCount++
+                                }
+
+                                // Delete selected block schedules
+                                blockedScheduleApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteBlockScheduleById(app.id)
+                                    deleteCount++
+                                }
+
+                                // Delete selected variable sessions
+                                variableSessionApps.filter { it.isBlocked }.forEach { app ->
+                                    variableSessionViewModel.deleteVariableSession(app.packageName)
+                                    deleteCount++
+                                }
+
+                                // Delete selected permanent blocks
+                                permanentlyBlockedApps.filter { it.isBlocked }.forEach { app ->
+                                    usageLimitViewModel.deleteBlockPermanentById(app.id)
+                                    deleteCount++
+                                }
 
                                 if (deleteCount > 0) {
                                     snackbarHostState.showSnackbar("Removed $deleteCount restrictions")

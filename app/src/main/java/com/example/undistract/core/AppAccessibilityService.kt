@@ -16,6 +16,10 @@ import com.example.undistract.features.variable_session.data.VariableSessionRepo
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
+import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,9 +34,58 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
+    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
+    private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.d("ACCESSIBILITY_SERVICE", "Service connected")
+
+        // Inisialisasi database dan dao
+        val database = AppDatabase.getDatabase(this)
+        val blockSchedulesDao = database.blockSchedulesDao()
+        val variableSessionDao = database.variableSessionDao()
+        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
+        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
+
+        // Inisialisasi manager
+        blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
+        variableSessionManager = VariableSessionManager(this, variableSessionDao)
+        variableSessionRepository = VariableSessionRepository(variableSessionDao)
+        variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+        usageStatsManager = UsageStatsManager(this)
+        loadBlockedApps()
+
+        // Setup service info untuk accessibility service
+        val info = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            notificationTimeout = 100
+            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+        }
+        serviceInfo = info
+
+//        // Cek apakah ini pertama kali setelah instalasi
+//        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
+//        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
+//
+//        if (isFirstRun) {
+//            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
+//
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                Log.d("ACCESSIBILITY_SERVICE", "Restarting service for better event detection")
+//                disableSelf()  // Menonaktifkan layanan sementara
+//            }, 1000)
+//
+//            sharedPreferences.edit().putBoolean("isFirstRun", false).apply()
+//        } else {
+//            Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
+//            sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
+//        }
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val context = this
@@ -50,8 +103,13 @@ class AppAccessibilityService : AccessibilityService() {
 
             Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
 
-            serviceScope.launch {
+            // Skip jika aplikasi yang dibuka adalah Undistract
+            if (packageName == context.packageName) {
+                Log.d("DEBUG_ACCESSIBILITY", "Aplikasi Undistract dibuka, skip dialog")
+                return
+            }
 
+            serviceScope.launch {
                 // BLOCK ON SCHEDULES
                 if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
                     withContext(Dispatchers.Main) {
@@ -119,6 +177,47 @@ class AppAccessibilityService : AccessibilityService() {
                 } else {
                     Log.d("AccessibilityService", "Blocked apps not initialized yet.")
                 }
+
+                // Check if the app has reached its daily limit
+                val limit = setaDailyLimitRepository.getByPackageName(packageName)
+                if (limit != null && usageStatsManager.hasReachedLimit(packageName, limit.timeLimitMinutes)) {
+                    // Hanya tampilkan dialog jika aplikasi yang dibuka bukan Undistract dan toggle aktif
+                    if (packageName != context.packageName && limit.isActive) {
+                        // Ubah bagian ini untuk memeriksa tipe notifikasi
+                        when (limit.notificationType) {
+                            "Block Application" -> {
+                                // Block the application and return to home
+                                Log.d("AccessibilityService", "Blocking application: ${limit.appName}")
+                                val intent = Intent(Intent.ACTION_MAIN)
+                                intent.addCategory(Intent.CATEGORY_HOME)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+
+                                // Tampilkan pesan "App Blocked"
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "App ${limit.appName} is blocked!", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                            "Pop Up Notification" -> {
+                                // Only show dialog for Pop Up Notification type
+                                withContext(Dispatchers.Main) {
+                                    val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
+                                        putExtra("APP_NAME", limit.appName)
+                                        putExtra("PACKAGE_NAME", packageName)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                            "Head Notification" -> {
+                                // Skip dialog for Head Notification - UsageMonitorService will handle this
+                                Log.d("AccessibilityService", "Skipping dialog for Head Notification type: ${limit.appName}")
+                            }
+                        }
+                    } else {
+                        Log.d("AccessibilityService", "Skipping daily limit dialog for Undistract app itself or toggle is off")
+                    }
+                }
             }
         }
     }
@@ -127,50 +226,6 @@ class AppAccessibilityService : AccessibilityService() {
         Log.d("BlockApp", "Service terputus!")
     }
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
-
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-        Log.d("ACCESSIBILITY_SERVICE", "Service connected")
-
-        // Inisialisasi database dan dao
-        val database = AppDatabase.getDatabase(this)
-        val blockSchedulesDao = database.blockSchedulesDao()
-        val variableSessionDao = database.variableSessionDao()
-        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
-
-        // Inisialisasi manager
-        blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
-        variableSessionManager = VariableSessionManager(this, variableSessionDao)
-        variableSessionRepository = VariableSessionRepository(variableSessionDao)
-        variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
-        loadBlockedApps()
-
-        // Setup service info untuk accessibility service
-        val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            notificationTimeout = 100
-        }
-        serviceInfo = info
-
-        // Cek apakah ini pertama kali setelah instalasi
-        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
-        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
-
-        if (isFirstRun) {
-            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d("ACCESSIBILITY_SERVICE", "Restarting service for better event detection")
-                disableSelf()  // Menonaktifkan layanan sementara
-            }, 1000)
-
-            sharedPreferences.edit().putBoolean("isFirstRun", false).apply()
-        } else {
-            Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
-            sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
-        }
-    }
 
     private fun loadBlockedApps() {
         coroutineScope.launch {

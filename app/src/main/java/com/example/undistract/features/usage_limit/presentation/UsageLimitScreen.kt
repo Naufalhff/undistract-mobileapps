@@ -35,6 +35,7 @@ import android.util.Log
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.core.content.ContextCompat
 import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
@@ -59,9 +60,13 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UsageLimitScreen(context: Context, navController: NavHostController, viewModel: SelectAppsViewModel) {
+fun UsageLimitScreen(
+    context: Context,
+    navController: NavHostController,
+    viewModel: SelectAppsViewModel,
+    isParental: Boolean = false
+) {
     val sharedViewModel: SharedViewModel = viewModel()
-
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
@@ -76,7 +81,8 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
             ),
             blockPermanentRepository = BlockPermanentRepository(
                 AppDatabase.getDatabase(context).blockPermanentDao()
-            )
+            ),
+            isParental = isParental
         )
     )
 
@@ -91,6 +97,15 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
 
     // Akses variableSessions dari UsageLimitViewModel
     val variableSessions by usageLimitViewModel.variableSessions.collectAsState()
+
+    // Akses blockPermanentApps dari UsageLimitViewModel
+    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
+
+    // Ambil data aplikasi yang diblokir
+    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
+
+    // Akses variableSessionProgress dari UsageLimitViewModel
+    val variableSessionProgress by usageLimitViewModel.variableSessionProgress.collectAsState()
 
     // State untuk menampung aplikasi yang dibatasi
     val limitedUsageApps by produceState(initialValue = mutableListOf<AppLimitInfo>(), dailyLimits, appUsageProgress) {
@@ -115,9 +130,10 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
 
                 // Get the progress from the ViewModel
                 val progress = appUsageProgress[limit.packageName] ?: 0f
+                val safeProgress = if (progress.isNaN()) 0f else progress
 
                 // Calculate used time in minutes
-                val usedMinutes = (progress * limit.timeLimitMinutes).toInt()
+                val usedMinutes = (safeProgress * limit.timeLimitMinutes).toInt()
                 val timeLimit = "${limit.timeLimitMinutes / 60}h ${limit.timeLimitMinutes % 60}m"
                 val usageText = "$timeLimit (${usedMinutes}m used)"
 
@@ -128,7 +144,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                     icon = iconDrawable,
                     isBlocked = limit.isActive,
                     timeLimit = usageText,
-                    progress = if (limit.isActive) progress else 0f
+                    progress = safeProgress
                 )
             } catch (e: Exception) {
                 Log.e("UsageLimitScreen", "Error creating AppLimitInfo for ${limit.appName}", e)
@@ -150,31 +166,30 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
     val isLoading by usageLimitViewModel.isLoading.collectAsState()
 
     // Check if there are any usage limits set
-    val hasNoLimits = limitedUsageApps.isEmpty()
+    val hasNoLimits = limitedUsageApps.isEmpty() &&
+            blockedApps.isEmpty() &&
+            variableSessions.isEmpty() &&
+            blockPermanentApps.isEmpty()
 
     // Pastikan untuk memanggil refreshUsageStats saat screen menjadi aktif
     LaunchedEffect(Unit) {
         usageLimitViewModel.refreshUsageStats()
     }
 
-    // Ambil data aplikasi yang diblokir
-    val blockedApps by usageLimitViewModel.blockedApps.collectAsState(emptyList())
-
-    // Akses blockPermanentApps dari UsageLimitViewModel
-    val blockPermanentApps by usageLimitViewModel.blockPermanentApps.collectAsState()
-
     // Navigasi ke edit screen dengan membawa data
     val navigateToEdit = { app: AppLimitInfo ->
         sharedViewModel.setAppLimitInfo(app)
-        navController.navigate("editUsageLimit")
+        navController.navigate("editUsageLimit?isParental=$isParental")
     }
 
     Scaffold(
         topBar = {
+            var menuExpanded by remember { mutableStateOf(false) }
+
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Usage Limits",
+                        text = if (isParental) "Parental Control" else "Usage Limits",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(top = 9.dp)
@@ -190,7 +205,8 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                         Image(
                             painter = painterResource(id = R.drawable.app_logo),
                             contentDescription = "App Logo",
-                            modifier = Modifier.size(50.dp))
+                            modifier = Modifier.size(50.dp)
+                        )
                     }
                 },
                 actions = {
@@ -203,14 +219,34 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                             contentDescription = "Refresh"
                         )
                     }
-                    IconButton(
-                        onClick = { /* TODO */ },
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications"
-                        )
+
+                    if (isParental) {
+                        Box(
+                            modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+                        ) {
+                            IconButton(
+                                onClick = { menuExpanded = true },
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MoreVert,
+                                    contentDescription = "More Options"
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Reset PIN") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        navController.navigate("resetPin")
+                                    }
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -228,7 +264,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = { navController.navigate("add_restriction") },
+                        onClick = { navController.navigate("add_restriction?isParental=$isParental") },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Purple40,
                             contentColor = Color.White
@@ -285,7 +321,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                         )
 
                         Button(
-                            onClick = { navController.navigate("add_restriction") },
+                            onClick = { navController.navigate("add_restriction?isParental=$isParental") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
@@ -331,11 +367,39 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                 fontWeight = FontWeight.SemiBold
                             )
 
-                            if (limitedUsageApps.isNotEmpty()) {
+                            // Tampilkan tombol "Edit" jika ada data di salah satu kategori
+                            if (limitedUsageApps.isNotEmpty() || blockedApps.isNotEmpty() || variableSessions.isNotEmpty() || blockPermanentApps.isNotEmpty()) {
                                 TextButton(onClick = {
                                     // Set data ke SharedViewModel
-                                    sharedViewModel.setAppLimitInfo(limitedUsageApps[0]) // Contoh: Mengirim aplikasi pertama
-                                    navController.navigate("editUsageLimit")
+                                    // Contoh: Mengirim aplikasi pertama dari kategori yang ada
+                                    val appToEdit = when {
+                                        limitedUsageApps.isNotEmpty() -> limitedUsageApps[0]
+                                        blockedApps.isNotEmpty() -> AppLimitInfo(
+                                            id = blockedApps[0].id,
+                                            appName = blockedApps[0].appName,
+                                            packageName = blockedApps[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, blockedApps[0].packageName)!!,
+                                            isBlocked = blockedApps[0].isActive,
+                                            timeLimit = "Blocked"
+                                        )
+                                        variableSessions.isNotEmpty() -> AppLimitInfo(
+                                            appName = variableSessions[0].appName,
+                                            packageName = variableSessions[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, variableSessions[0].packageName)!!,
+                                            isBlocked = variableSessions[0].isActive,
+                                            timeLimit = "${variableSessions[0].secondsLeft / 60}m ${variableSessions[0].secondsLeft % 60}s"
+                                        )
+                                        else -> AppLimitInfo(
+                                            id = blockPermanentApps[0].id,
+                                            appName = blockPermanentApps[0].appName,
+                                            packageName = blockPermanentApps[0].packageName,
+                                            icon = usageLimitViewModel.getAppIcon(context, blockPermanentApps[0].packageName)!!,
+                                            isBlocked = blockPermanentApps[0].isActive,
+                                            timeLimit = "Permanently Blocked"
+                                        )
+                                    }
+                                    sharedViewModel.setAppLimitInfo(appToEdit)
+                                    navController.navigate("editUsageLimit?isParental=$isParental")
                                 }) {
                                     Text(
                                         text = "Edit",
@@ -387,7 +451,7 @@ fun UsageLimitScreen(context: Context, navController: NavHostController, viewMod
                                         icon = usageLimitViewModel.getAppIcon(context, session.packageName)!!,
                                         isBlocked = session.isActive,
                                         timeLimit = "${session.secondsLeft / 60}m ${session.secondsLeft % 60}s",
-                                        progress = if (session.isActive) 1f else 0f
+                                        progress = variableSessionProgress[session.packageName] ?: 0f
                                     )
                                 },
                                 showProgress = true,
@@ -514,13 +578,13 @@ fun AppLimitItem(
                 app.progress?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
-                        progress = it,
+                        progress = { app.progress?.let { if (it.isNaN()) 0f else it } ?: 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
                         color = Purple40,
-                        trackColor = Color(0xFFE0D0FF)
+                        trackColor = Color(0xFFE0D0FF),
                     )
                 }
             }
@@ -661,8 +725,9 @@ fun BlockedAppItem(
 
         Switch(
             checked = app.isActive,
-            onCheckedChange = { isChecked -> 
-                onToggleChange(isChecked) 
+            onCheckedChange = { isChecked ->
+                viewModel.toggleBlockSchedule(app.id, isChecked)
+                onToggleChange(isChecked)
             },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,

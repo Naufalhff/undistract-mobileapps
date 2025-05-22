@@ -46,7 +46,8 @@ import android.content.Context
 fun SetDailyUsageLimitScreen(
     navController: NavHostController,
     viewModel: SelectAppsViewModel,
-    usageLimitViewModel: UsageLimitViewModel
+    usageLimitViewModel: UsageLimitViewModel,
+    isParental: Boolean
 ) {
     requireNotNull(navController) { "NavController must not be null" }
     requireNotNull(viewModel) { "ViewModel must not be null" }
@@ -57,7 +58,8 @@ fun SetDailyUsageLimitScreen(
         factory = SetaDailyLimitViewModelFactory(
             SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
-            )
+            ),
+            isParental
         )
     )
 
@@ -78,7 +80,7 @@ fun SetDailyUsageLimitScreen(
 
     // Time options lists
     val hoursOptions = remember { (0..23).map { "$it hrs" } }
-    val minutesOptions = remember { (0..55 step 5).map { "$it mins" } }
+    val minutesOptions = remember { (0..59).map { "$it mins" } }
 
     Column(
         modifier = Modifier
@@ -447,11 +449,15 @@ fun SetDailyUsageLimitScreen(
                                         R.drawable.app_logo.toString()
                                     }
 
+                                    Log.d("SetaDailyLimit", "Creating entity with notification type: ${viewModel.selectedNotificationType.value}")
+
                                     SetaDailyLimitEntity(
                                         appName = app.name,
                                         packageName = app.packageName,
                                         icon = iconString,
-                                        timeLimitMinutes = timeLimitMinutes
+                                        timeLimitMinutes = timeLimitMinutes,
+                                        isParental = isParental,
+                                        notificationType = viewModel.selectedNotificationType.value
                                     )
                                 }
 
@@ -472,8 +478,7 @@ fun SetDailyUsageLimitScreen(
                                                         try {
                                                             // Navigate after a short delay to ensure the snackbar is shown
                                                             delay(500)
-                                                            navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                                // Use a simpler navigation with fewer options
+                                                            navController.navigate("parental_usage_limit?isParental=$isParental") {
                                                                 popUpTo(navController.graph.startDestinationId)
                                                                 launchSingleTop = true
                                                             }

@@ -8,7 +8,9 @@ class BlockSchedulesRepository(
     private val dao: BlockSchedulesDao
 )  {
 
-    fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>> = dao.getAllBlockSchedules()
+    fun getAllBlockSchedules(isParental: Boolean = false): Flow<List<BlockSchedulesEntity>> {
+        return dao.getSchedulesByParentalFlag(isParental)
+    }
 
     suspend fun addBlockSchedulesForMultipleApps(
         apps: List<Pair<String, String>>, // List pasangan (nama aplikasi, packageName)
@@ -16,7 +18,8 @@ class BlockSchedulesRepository(
         isAllDay: Boolean,
         startTime: String?,
         endTime: String?,
-        isActive: Boolean
+        isActive: Boolean,
+        isParental: Boolean
     ) {
         for (app in apps) {
             val schedule = BlockSchedulesEntity(
@@ -26,7 +29,8 @@ class BlockSchedulesRepository(
                 isAllDay = isAllDay,
                 startTime = startTime,
                 endTime = endTime,
-                isActive = isActive
+                isActive = isActive,
+                isParental = isParental
             )
             dao.insertBlockSchedules(schedule)
         }
@@ -34,5 +38,9 @@ class BlockSchedulesRepository(
 
     suspend fun deleteBlockSchedules(id: Int) {
         dao.deleteBlockSchedules(id)
+    }
+
+    suspend fun updateBlockScheduleActiveState(id: Int, isActive: Boolean) {
+        dao.updateBlockScheduleActiveState(id, isActive)
     }
 }

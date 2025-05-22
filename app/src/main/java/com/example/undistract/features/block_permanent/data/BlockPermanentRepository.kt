@@ -10,10 +10,6 @@ class BlockPermanentRepository (private val dao: BlockPermanentDao) {
         dao.insertBlockPermanent(data)
     }
 
-    suspend fun getBlockPermanent(packageName: String): List<BlockPermanentEntity> {
-        return dao.getBlockPermanent(packageName)
-    }
-
     suspend fun deleteBlockPermanent(id: Int) {
         dao.deleteBlockPermanent(id)
     }
@@ -28,5 +24,9 @@ class BlockPermanentRepository (private val dao: BlockPermanentDao) {
 
     suspend fun deleteBlockPermanentById(id: Int) {
         dao.deleteBlockPermanent(id)
+    }
+
+    fun getAllBlockPermanent(isParental: Boolean = false): Flow<List<BlockPermanentEntity>> {
+        return dao.getBlockPermanentByParentalFlag(isParental)
     }
 }

@@ -29,8 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.undistract.R
+import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
@@ -43,9 +46,14 @@ import com.example.undistract.ui.navigation.BottomNavItem
 fun BlockPermanentScreen(
     navController: NavHostController,
     selectAppsViewModel: SelectAppsViewModel,
-    blockPermanentViewModel: BlockPermanentViewModel
+    repository: BlockPermanentRepository,
+    isParental: Boolean
 ) {
     val context = LocalContext.current
+
+    val viewModel: BlockPermanentViewModel = viewModel(
+        factory = BlockPermanentViewModelFactory(repository, isParental)
+    )
 
     selectAppsViewModel.updateCurrentRoute("block_permanent")
 
@@ -138,11 +146,12 @@ fun BlockPermanentScreen(
                                     packageName = appInfo.packageName,
                                     appName = restrictionName.ifEmpty { appInfo.name },
                                     isActive = true,
+                                    isParental = isParental
                                 )
-                                blockPermanentViewModel.insertBlockPermanent(blockPermanentEntity)
+                                viewModel.insertBlockPermanent(blockPermanentEntity)
                                 Log.d("BlockPermanentScreen", "Data saved: ${blockPermanentEntity.packageName}, ${blockPermanentEntity.appName}")
                             }
-                            navController.navigate(BottomNavItem.UsageLimit.route)
+                            navController.navigate("parental_usage_limit?isParental=$isParental")
                         } catch (e: Exception) {
                             Log.e("BlockPermanentScreen", "Error saving data: ${e.message}", e)
                         }

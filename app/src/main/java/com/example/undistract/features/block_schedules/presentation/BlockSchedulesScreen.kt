@@ -24,10 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
+import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
 import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
@@ -42,8 +45,16 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedulesViewModel, selectAppViewModel: SelectAppsViewModel) {
+fun BlockSchedulesScreen(
+    navController: NavController,
+    isParental: Boolean,
+    repository: BlockSchedulesRepository,
+    selectAppViewModel: SelectAppsViewModel
+) {
     val context = LocalContext.current
+    val viewModel: BlockSchedulesViewModel = viewModel(
+        factory = BlockSchedulesViewModelFactory(repository, isParental)
+    )
     // Mengambil selected apps
     selectAppViewModel.updateCurrentRoute("block_schedules")
     val selectedApps = selectAppViewModel.getSelectedApps()
@@ -266,7 +277,7 @@ fun BlockSchedulesScreen(navController: NavController, viewModel: BlockSchedules
                                         endTime = endTime.toString(),
                                         isActive = true
                                     )
-                                    navController.popBackStack()
+                                    navController.navigate("parental_usage_limit?isParental=$isParental")
                                     Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()

@@ -32,7 +32,8 @@ class UsageLimitViewModel(
     private val repository: SetaDailyLimitRepository,
     private val blockSchedulesRepository: BlockSchedulesRepository,
     private val variableSessionRepository: VariableSessionRepository,
-    private val blockPermanentRepository: BlockPermanentRepository
+    private val blockPermanentRepository: BlockPermanentRepository,
+    private val isParental: Boolean
 ) : ViewModel() {
     private val TAG = "UsageLimitViewModel"
 
@@ -51,7 +52,7 @@ class UsageLimitViewModel(
     private var trackingJob: kotlinx.coroutines.Job? = null
 
     // Tambahkan Flow untuk blockedApps
-    val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules()
+    val blockedApps: Flow<List<BlockSchedulesEntity>> = blockSchedulesRepository.getAllBlockSchedules(isParental)
 
     private val _variableSessions = MutableStateFlow<List<VariableSessionEntity>>(emptyList())
     val variableSessions: StateFlow<List<VariableSessionEntity>> get() = _variableSessions
@@ -59,9 +60,12 @@ class UsageLimitViewModel(
     private val _blockPermanentApps = MutableStateFlow<List<BlockPermanentEntity>>(emptyList())
     val blockPermanentApps: StateFlow<List<BlockPermanentEntity>> get() = _blockPermanentApps
 
+    private val _variableSessionProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val variableSessionProgress: StateFlow<Map<String, Float>> get() = _variableSessionProgress
+
     init {
         viewModelScope.launch {
-            repository.getAll().collect { limits ->
+            repository.getAll(isParental).collect { limits ->
                 _dailyLimits.value = limits
                 if (limits.isNotEmpty()) {
                     Log.d(TAG, "Received ${limits.size} limits from database")
@@ -76,16 +80,18 @@ class UsageLimitViewModel(
         }
 
         viewModelScope.launch {
-            variableSessionRepository.getAllVariableSession().collect { sessions ->
+            variableSessionRepository.getAllVariableSession(isParental).collect { sessions ->
                 _variableSessions.value = sessions
             }
         }
 
         viewModelScope.launch {
-            blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
+            blockPermanentRepository.getAllBlockPermanent(isParental).collect { apps ->
                 _blockPermanentApps.value = apps
             }
         }
+
+        startVariableSessionTracking()
     }
 
     fun initUsageTracking(context: Context) {
@@ -208,7 +214,7 @@ class UsageLimitViewModel(
                 Log.d(TAG, "Refreshing daily limits from database")
                 // The repository.getAll() is already a Flow, so it will automatically update
                 // But we can force a refresh by collecting the latest values
-                repository.getAll().collect { limits ->
+                repository.getAll(isParental).collect { limits ->
                     Log.d(TAG, "Refreshed ${limits.size} limits from database")
                     _dailyLimits.value = limits
                     // Break after first collection to avoid continuous collection
@@ -238,14 +244,14 @@ class UsageLimitViewModel(
                 if (appContext != null) {
                     val database = AppDatabase.getDatabase(appContext)
                     val tempRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
-                    tempRepository.getAll().collect { limits ->
+                    tempRepository.getAll(isParental).collect { limits ->
                         _dailyLimits.value = limits
                         // Break after first collection to avoid continuous collection
                         return@collect
                     }
                 } else {
                     // Use the injected repository if appContext is null
-                    repository.getAll().collect { limits ->
+                    repository.getAll(isParental).collect { limits ->
                         _dailyLimits.value = limits
                         // Break after first collection to avoid continuous collection
                         return@collect
@@ -290,9 +296,9 @@ class UsageLimitViewModel(
 
     // Fungsi untuk mengupdate status toggle
     fun toggleBlockSchedule(id: Int, isActive: Boolean) {
-//        viewModelScope.launch {
-//            blockSchedulesRepository.updateBlockScheduleActiveState(id, isActive)
-//        }
+        viewModelScope.launch {
+            blockSchedulesRepository.updateBlockScheduleActiveState(id, isActive)
+        }
     }
 
     fun toggleVariableSessionActiveState(packageName: String, isActive: Boolean) {
@@ -314,12 +320,6 @@ class UsageLimitViewModel(
         }
     }
 
-    fun fetchBlockPermanent(packageName: String) {
-        viewModelScope.launch {
-            val blockPermanentApps = blockPermanentRepository.getBlockPermanent(packageName)
-            // Lakukan sesuatu dengan blockPermanentApps
-        }
-    }
 
     fun deleteBlockScheduleById(id: Int) {
         viewModelScope.launch {
@@ -352,7 +352,7 @@ class UsageLimitViewModel(
 
     fun refreshVariableSessions() {
         viewModelScope.launch {
-            variableSessionRepository.getAllVariableSession().collect { sessions ->
+            variableSessionRepository.getAllVariableSession(isParental).collect { sessions ->
                 // Update state if needed
             }
         }
@@ -363,6 +363,51 @@ class UsageLimitViewModel(
             blockPermanentRepository.getActiveBlockPermanent().collect { apps ->
                 // Update state if needed
             }
+        }
+    }
+
+    fun startVariableSessionTracking() {
+        viewModelScope.launch {
+            while (true) {
+                updateVariableSessionProgress()
+                delay(1000) // Update every second
+            }
+        }
+    }
+
+    private suspend fun updateVariableSessionProgress() {
+        withContext(Dispatchers.IO) {
+            val progressMap = mutableMapOf<String, Float>()
+            _variableSessions.value.forEach { session ->
+                if (session.isActive) {
+                    val progress = session.secondsLeft.toFloat() / (session.secondsLeft + session.coolDownDuration!!.toInt())
+                    progressMap[session.packageName] = progress
+                } else {
+                    progressMap[session.packageName] = 0f
+                }
+            }
+            _variableSessionProgress.value = progressMap
+        }
+    }
+
+    // Fungsi baru untuk mengambil semua data BlockPermanent
+    fun fetchAllBlockPermanent() {
+        viewModelScope.launch {
+            try {
+                blockPermanentRepository.getAllBlockPermanent().collect { apps ->
+                    _blockPermanentApps.value = apps
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching all block permanent apps", e)
+            }
+        }
+    }
+
+    private fun calculateProgress(usedTime: Long, totalTime: Long): Float {
+        return if (totalTime > 0) {
+            (usedTime.toFloat() / totalTime.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
         }
     }
 }

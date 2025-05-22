@@ -211,4 +211,24 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         }
         return appInfoList
     }
+
+    fun startTracking(packageName: String, viewModel: VariableSessionViewModel) {
+        stopwatchRunnable = object : Runnable {
+            override fun run() {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val session = dao.getVariableSession(packageName).firstOrNull()
+                    session?.let {
+                        if (it.isActive && it.secondsLeft > 0) {
+                            viewModel.subtractSecondsLeft(packageName, 1)
+                            Log.d("VariableSession", "Tracking $packageName: ${it.secondsLeft} seconds left")
+                        } else if (it.secondsLeft <= 0) {
+                            // Stop tracking when time is up
+                            stopTimer(packageName, viewModel)
+                        }
+                    }
+                }
+            }
+        }
+        handler.post(stopwatchRunnable!!)
+    }
 }
