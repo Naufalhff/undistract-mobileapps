@@ -46,6 +46,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.undistract.config.AppDatabase
+import com.example.undistract.core.ApiBackendClient
+import com.example.undistract.core.ApiService
+import com.example.undistract.core.SyncRepository
+import com.example.undistract.core.SyncViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,6 +89,15 @@ fun UsageLimitScreen(
             isParental = isParental
         )
     )
+
+    val syncRepository = SyncRepository(
+        AppDatabase.getDatabase(context).blockSchedulesDao(),
+        AppDatabase.getDatabase(context).variableSessionDao(),
+        AppDatabase.getDatabase(context).blockPermanentDao(),
+        AppDatabase.getDatabase(context).setaDailyLimitDao(),
+        ApiBackendClient.apiService
+    )
+    val syncViewModel = SyncViewModel(syncRepository)
 
     // Initialize usage tracking
     LaunchedEffect(Unit) {
@@ -210,6 +223,26 @@ fun UsageLimitScreen(
                     }
                 },
                 actions = {
+                    Button(
+                        onClick = { syncViewModel.syncAllData(context) },
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .height(36.dp)
+                            .width(60.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Purple40
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // padding dalam tombol
+                    ) {
+                        Text(
+                            text = "Sync",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
                     IconButton(
                         onClick = { usageLimitViewModel.refreshUsageStats() },
                         modifier = Modifier.padding(top = 4.dp)

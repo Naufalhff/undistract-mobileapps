@@ -21,9 +21,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.undistract.features.get_installed_apps.data.InstalledAppsRepository
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
-import com.example.undistract.features.get_installed_apps.domain.GetInstalledAppsUseCase
 import com.example.undistract.features.usage_monitor.UsageMonitorService
 import com.example.undistract.ui.navigation.AppNavHost
 import com.example.undistract.ui.theme.UndistractTheme
@@ -34,7 +31,6 @@ class MainActivity : ComponentActivity() {
         const val REQUEST_CODE_OVERLAY_PERMISSION = 1001
     }
 
-    private lateinit var installedApps: List<AppInfo>
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -65,11 +61,7 @@ class MainActivity : ComponentActivity() {
             // Start the monitoring service
             startMonitoringService()
 
-            val repository = InstalledAppsRepository(this)
-            val getInstalledAppsUseCase = GetInstalledAppsUseCase(repository)
-
             lifecycleScope.launch {
-                installedApps = getInstalledAppsUseCase(this@MainActivity)
 
                 setContent {
                     UndistractTheme {
@@ -79,7 +71,6 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppNavHost(
                                 context = this@MainActivity,
-                                installedApps = installedApps
                             )
                         }
                     }

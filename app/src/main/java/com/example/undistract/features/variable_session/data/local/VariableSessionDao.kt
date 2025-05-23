@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface VariableSessionDao {
     @Query("SELECT * FROM variable_session_table")
+    fun getAll(): List<VariableSessionEntity>
+
+    @Query("SELECT * FROM variable_session_table")
     fun getAllVariableSession(): Flow<List<VariableSessionEntity>>
 
     @Query("SELECT * FROM variable_session_table WHERE isParental = :isParental")

@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BlockPermanentDao {
+    @Query("SELECT * FROM block_permanent_table")
+    fun getAll(): List<BlockPermanentEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBlockPermanent(data: BlockPermanentEntity)
 

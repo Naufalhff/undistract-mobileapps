@@ -16,7 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.example.undistract.config.AppDatabase
-import com.example.undistract.core.ApiClient
+import com.example.undistract.core.ApiOtpClient
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
 import com.example.undistract.features.authentication.data.AuthenticationRepository
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
@@ -56,7 +56,7 @@ fun AppNavHost(context: Context) {
     val database = AppDatabase.getDatabase(context)
 
     // Dapatkan API service
-    val apiService = remember { ApiClient.apiService }
+    val apiService = remember { ApiOtpClient.apiService }
 
     // Dapatkan DAO dari database
     val blockSchedulesDao = database.blockSchedulesDao()

@@ -12,6 +12,9 @@ interface SetaDailyLimitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(setaDailyLimitEntity: SetaDailyLimitEntity): Long
 
+    @Query("SELECT * FROM daily_limits_table")
+    fun getAll(): List<SetaDailyLimitEntity>
+
     @Query("SELECT * FROM daily_limits_table WHERE isParental = :isParental")
     fun getAll(isParental: Boolean): Flow<List<SetaDailyLimitEntity>>
 

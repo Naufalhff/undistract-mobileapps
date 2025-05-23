@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface BlockSchedulesDao {
     @Query("SELECT * FROM block_schedules_table")
+    fun getAll(): List<BlockSchedulesEntity>
+
+    @Query("SELECT * FROM block_schedules_table")
     fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>>
 
     @Query("SELECT * FROM block_schedules_table WHERE isParental = :isParental")

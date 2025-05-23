@@ -23,7 +23,8 @@ import com.example.undistract.features.authentication.data.local.PinDao
         VariableSessionEntity::class,
         BlockPermanentEntity::class,
         SetaDailyLimitEntity::class,
-        VisitedUrlsEntity::class
+        VisitedUrlsEntity::class,
+        PinEntity::class
     ],
     version = 1,
     exportSchema = false
