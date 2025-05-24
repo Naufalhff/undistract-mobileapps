@@ -17,5 +17,6 @@ data class VariableSessionEntity(
     val coolDownEndTime: Long?,
     val isOnCoolDown: Boolean,
     val isActive: Boolean,
-    val isParental: Boolean
+    val isParental: Boolean,
+    val isSynced: Boolean = false
 )

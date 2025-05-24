@@ -1,4 +1,4 @@
-package com.example.undistract.features.authentication.data.local
+package com.example.undistract.features.authentication_parental.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert

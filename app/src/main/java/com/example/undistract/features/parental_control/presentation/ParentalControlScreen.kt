@@ -1,6 +1,5 @@
 package com.example.undistract.features.parental_control.presentation
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,7 +20,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.example.undistract.features.authentication.presentation.AuthenticationViewModel
+import com.example.undistract.features.authentication_parental.presentation.AuthenticationViewModel
 import com.example.undistract.ui.theme.ColorNew
 import kotlinx.coroutines.launch
 import com.example.undistract.features.parental_control.DeviceAdminUtils

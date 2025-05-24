@@ -18,11 +18,9 @@ import androidx.navigation.navigation
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.core.ApiOtpClient
 import com.example.undistract.features.add_behavior.presentation.AddRestrictionScreen
-import com.example.undistract.features.authentication.data.AuthenticationRepository
+import com.example.undistract.features.authentication_parental.data.AuthenticationRepository
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.my_usage.presentation.MyUsageScreen
 import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
@@ -36,18 +34,15 @@ import com.example.undistract.features.usage_limit.presentation.UsageLimitScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
-import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
-import com.example.undistract.features.parental_control.presentation.ParentalControlScreen
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
-import com.example.undistract.features.usage_limit.presentation.EditUsageLimitScreen
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModelFactory
-import com.example.undistract.features.authentication.presentation.AuthenticationViewModel
-import com.example.undistract.features.authentication.presentation.CreatePINScreen
-import com.example.undistract.features.authentication.presentation.ResetPINScreen
-import com.example.undistract.features.authentication.presentation.VerifyOTPScreen
+import com.example.undistract.features.authentication_parental.presentation.AuthenticationViewModel
+import com.example.undistract.features.authentication_parental.presentation.CreatePINScreen
+import com.example.undistract.features.authentication_parental.presentation.ResetPINScreen
+import com.example.undistract.features.authentication_parental.presentation.VerifyOTPScreen
 
 
 @Composable

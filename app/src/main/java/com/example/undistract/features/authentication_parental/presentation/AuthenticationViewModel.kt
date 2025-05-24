@@ -1,11 +1,11 @@
-package com.example.undistract.features.authentication.presentation
+package com.example.undistract.features.authentication_parental.presentation
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.undistract.features.authentication.data.AuthenticationRepository
+import com.example.undistract.features.authentication_parental.data.AuthenticationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

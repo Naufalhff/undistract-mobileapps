@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BlockSchedulesDao {
-    @Query("SELECT * FROM block_schedules_table")
-    fun getAll(): List<BlockSchedulesEntity>
 
     @Query("SELECT * FROM block_schedules_table")
     fun getAllBlockSchedules(): Flow<List<BlockSchedulesEntity>>
@@ -28,5 +26,19 @@ interface BlockSchedulesDao {
 
     @Query("UPDATE block_schedules_table SET isActive = :isActive WHERE id = :id")
     suspend fun updateBlockScheduleActiveState(id: Int, isActive: Boolean)
+
+
+    // Query sync remote
+    @Query("SELECT * FROM block_schedules_table")
+    fun getAll(): List<BlockSchedulesEntity>
+
+    @Query("DELETE FROM block_schedules_table WHERE isSynced = 1")
+    suspend fun clearAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<BlockSchedulesEntity>)
+
+    @Query("UPDATE block_schedules_table SET isSynced = 1 WHERE isSynced = 0")
+    suspend fun markAllAsSynced()
 }
 

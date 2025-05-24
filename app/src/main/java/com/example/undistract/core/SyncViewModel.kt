@@ -18,4 +18,15 @@ class SyncViewModel(private val syncRepository: SyncRepository) : ViewModel() {
             }
         }
     }
+
+    fun fetchAllData(context: Context) {
+        viewModelScope.launch {
+            val success = syncRepository.fetchAll()
+            if (success) {
+                Toast.makeText(context, "Fetch sukses", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Fetch gagal", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }

@@ -15,4 +15,5 @@ data class SetaDailyLimitEntity(
     val isActive: Boolean = true,
     val isParental: Boolean = false,
     val notificationType: String = "Head Notification", // Default is Head Notification
+    val isSynced: Boolean = false
 )
