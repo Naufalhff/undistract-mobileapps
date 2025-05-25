@@ -121,6 +121,21 @@ fun AppNavHost(context: Context) {
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(navController = navController, context = context)
             }
+            composable(
+                "parental_usage_limit?isParental={isParental}",
+                arguments = listOf(navArgument("isParental") {
+                    defaultValue = false
+                    type = NavType.BoolType
+                })
+            ) { backStackEntry ->
+                val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
+                UsageLimitScreen(
+                    navController = navController,
+                    context = context,
+                    viewModel = selectAppsViewModel,
+                    isParental = isParental
+                )
+            }
 
             navigation(
                 startDestination = "add_restriction_main",
@@ -133,21 +148,6 @@ fun AppNavHost(context: Context) {
                 composable("select_apps")
                 {
                     SelectAppsScreen(navController = navController)
-                }
-                composable(
-                    "parental_usage_limit?isParental={isParental}",
-                    arguments = listOf(navArgument("isParental") {
-                        defaultValue = false
-                        type = NavType.BoolType
-                    })
-                ) { backStackEntry ->
-                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                    UsageLimitScreen(
-                        navController = navController,
-                        context = context,
-                        viewModel = selectAppsViewModel,
-                        isParental = isParental
-                    )
                 }
                 composable(
                     "add_restriction?isParental={isParental}",

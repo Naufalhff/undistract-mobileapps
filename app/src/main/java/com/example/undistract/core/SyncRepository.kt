@@ -2,6 +2,7 @@ package com.example.undistract.core
 
 import android.content.Context
 import android.util.Log
+import com.example.undistract.features.authentication_parental.data.local.PinDao
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitDao
@@ -15,6 +16,7 @@ class SyncRepository(
     private val variableSessionDao: VariableSessionDao,
     private val blockPermanentDao: BlockPermanentDao,
     private val setaDailyLimitDao: SetaDailyLimitDao,
+    private val pinDao: PinDao,
     private val apiService: ApiService,
     private val context: Context
 ) {
@@ -37,12 +39,17 @@ class SyncRepository(
             variableSessionDao.clearAll()
             blockPermanentDao.clearAll()
             setaDailyLimitDao.clearAll()
+            pinDao.clearAll()
 
             // Masukkan data baru
             blockSchedulesDao.insertAll(data.blockSchedules)
             variableSessionDao.insertAll(data.variableSessions)
             blockPermanentDao.insertAll(data.blockPermanents)
             setaDailyLimitDao.insertAll(data.dailyLimits)
+            val modifiedPins = data.userParents.map { pin ->
+                pin.copy(id = 0)
+            }
+            pinDao.insertAll(modifiedPins)
 
             return@withContext true
         } else {
@@ -56,6 +63,7 @@ class SyncRepository(
         val variableSessions = variableSessionDao.getAll().map { it.copy(isSynced = true) }
         val blockPermanents = blockPermanentDao.getAll().map { it.copy(isSynced = true) }
         val dailyLimits = setaDailyLimitDao.getAll().map { it.copy(isSynced = true) }
+        val userParents = pinDao.getAll().map { it.copy(isSynced = true) }
 
         val existingUuids = ExistingUuids(
             blockSchedules = blockSchedules.map { it.uuid },
@@ -64,7 +72,7 @@ class SyncRepository(
             dailyLimits = dailyLimits.map { it.uuid }
         )
 
-        val body = SyncRequestBody(blockSchedules, variableSessions, blockPermanents, dailyLimits, existingUuids)
+        val body = SyncRequestBody(blockSchedules, variableSessions, blockPermanents, dailyLimits, userParents, existingUuids)
         val jsonBody = Gson().toJson(body)
         Log.d("SyncPayload", jsonBody)
 
@@ -80,6 +88,7 @@ class SyncRepository(
             variableSessionDao.markAllAsSynced()
             blockPermanentDao.markAllAsSynced()
             setaDailyLimitDao.markAllAsSynced()
+            pinDao.markAllAsSynced()
         }
         return@withContext response.isSuccessful
     }

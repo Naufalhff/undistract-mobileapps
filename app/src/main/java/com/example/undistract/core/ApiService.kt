@@ -1,6 +1,7 @@
 package com.example.undistract.core
 
 import android.content.Context
+import com.example.undistract.features.authentication_parental.data.local.PinEntity
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
@@ -38,13 +39,15 @@ data class SyncRequestBody(
     val variableSessions: List<VariableSessionEntity>,
     val blockPermanents: List<BlockPermanentEntity>,
     val dailyLimits: List<SetaDailyLimitEntity>,
+    val userParents: List<PinEntity>,
     val existingUuids: ExistingUuids
 )
 data class SyncResponse(
     val blockSchedules: List<BlockSchedulesEntity>,
     val variableSessions: List<VariableSessionEntity>,
     val blockPermanents: List<BlockPermanentEntity>,
-    val dailyLimits: List<SetaDailyLimitEntity>
+    val dailyLimits: List<SetaDailyLimitEntity>,
+    val userParents: List<PinEntity>
 )
 data class ExistingUuids(
     val blockSchedules: List<String>,

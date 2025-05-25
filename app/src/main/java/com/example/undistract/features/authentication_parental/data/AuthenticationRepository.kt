@@ -40,7 +40,8 @@ class AuthenticationRepository(
     ) {
         val pinEntity = PinEntity(
             pin = pin,
-            email = email
+            email = email,
+            isSynced = false
         )
         pinDao.savePin(pinEntity)
     }

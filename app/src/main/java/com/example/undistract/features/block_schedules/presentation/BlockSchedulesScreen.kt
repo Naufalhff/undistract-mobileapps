@@ -302,9 +302,18 @@ fun BlockSchedulesScreen(
                                         isAllDay = isAllDay,
                                         startTime = startTime.toString(),
                                         endTime = endTime.toString(),
-                                        isActive = true
+                                        isActive = true,
+                                        isParental = isParental
                                     )
-                                    navController.navigate("parental_usage_limit?isParental=$isParental")
+                                    if (isParental){
+                                        navController.navigate("parental_usage_limit?isParental=true"){
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        navController.navigate(BottomNavItem.UsageLimit.route){
+                                            launchSingleTop = true
+                                        }
+                                    }
                                     Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()

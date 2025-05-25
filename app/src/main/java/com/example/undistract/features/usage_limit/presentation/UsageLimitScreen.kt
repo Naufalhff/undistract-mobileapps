@@ -46,6 +46,7 @@ import com.example.undistract.features.usage_stats.UsageStatsManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.core.ApiBackendClient
 import com.example.undistract.core.ApiService
@@ -72,6 +73,7 @@ fun UsageLimitScreen(
     isParental: Boolean = false
 ) {
     val sharedViewModel: SharedViewModel = viewModel()
+    Log.d("USAGE_LIMIT_PARENTAL", "Status: $isParental")
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
@@ -91,11 +93,18 @@ fun UsageLimitScreen(
         )
     )
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Log current route
+    Log.d("Navigation", "Current Route: $currentRoute")
+
     val syncRepository = SyncRepository(
         AppDatabase.getDatabase(context).blockSchedulesDao(),
         AppDatabase.getDatabase(context).variableSessionDao(),
         AppDatabase.getDatabase(context).blockPermanentDao(),
         AppDatabase.getDatabase(context).setaDailyLimitDao(),
+        AppDatabase.getDatabase(context).pinDao(),
         ApiBackendClient.apiService,
         context
     )

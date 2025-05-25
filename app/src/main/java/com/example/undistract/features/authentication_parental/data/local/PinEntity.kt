@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class PinEntity(
     @PrimaryKey val id: Int = 0,
     val pin: String,
-    val email: String
+    val email: String,
+    val isSynced: Boolean
 )

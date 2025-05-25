@@ -66,6 +66,7 @@ fun LoginScreen() {
         AppDatabase.getDatabase(context).variableSessionDao(),
         AppDatabase.getDatabase(context).blockPermanentDao(),
         AppDatabase.getDatabase(context).setaDailyLimitDao(),
+        AppDatabase.getDatabase(context).pinDao(),
         ApiBackendClient.apiService,
         context
     )

@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.undistract.features.authentication_parental.presentation.AuthenticationViewModel
@@ -195,7 +196,7 @@ fun PinVerificationContent(
                                 .aspectRatio(1f)
                                 .focusRequester(focusRequesters[i]),
                             singleLine = true,
-                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, lineHeight = 1.em),
                             visualTransformation = PasswordVisualTransformation(),
                             placeholder = { Text("●") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
