@@ -17,7 +17,8 @@ import kotlinx.coroutines.withContext
 
 class SetaDailyLimitViewModel(
     private val repository: SetaDailyLimitRepository,
-    private val appContext: Context? = null
+    private val appContext: Context? = null,
+    private val isParental: Boolean
 ) : ViewModel() {
     private val TAG = "SetaDailyLimitViewModel"
 
@@ -28,7 +29,7 @@ class SetaDailyLimitViewModel(
 
     init {
         viewModelScope.launch {
-            repository.getAll().collect { limits ->
+            repository.getAll(isParental).collect { limits ->
                 Log.d(TAG, "Received ${limits.size} limits from database")
                 _dailyLimits.value = limits
             }

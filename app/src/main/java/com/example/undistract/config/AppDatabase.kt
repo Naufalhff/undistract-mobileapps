@@ -8,12 +8,12 @@ import com.example.undistract.features.block_permanent.data.local.BlockPermanent
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
-import com.example.undistract.features.parental_control.data.local.PinDao
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
-import com.example.undistract.features.parental_control.data.local.PinEntity
+import com.example.undistract.features.authentication.data.local.PinEntity
+import com.example.undistract.features.authentication.data.local.PinDao
 
 @Database(entities = [BlockSchedulesEntity::class, VariableSessionEntity::class, BlockPermanentEntity::class, SetaDailyLimitEntity::class, PinEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {

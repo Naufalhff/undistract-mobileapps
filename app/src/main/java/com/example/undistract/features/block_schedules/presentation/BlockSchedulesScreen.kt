@@ -277,7 +277,7 @@ fun BlockSchedulesScreen(
                                         endTime = endTime.toString(),
                                         isActive = true
                                     )
-                                    navController.popBackStack()
+                                    navController.navigate("parental_usage_limit?isParental=$isParental")
                                     Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()

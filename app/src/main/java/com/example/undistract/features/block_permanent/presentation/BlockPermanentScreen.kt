@@ -151,7 +151,7 @@ fun BlockPermanentScreen(
                                 viewModel.insertBlockPermanent(blockPermanentEntity)
                                 Log.d("BlockPermanentScreen", "Data saved: ${blockPermanentEntity.packageName}, ${blockPermanentEntity.appName}")
                             }
-                            navController.navigate(BottomNavItem.UsageLimit.route)
+                            navController.navigate("parental_usage_limit?isParental=$isParental")
                         } catch (e: Exception) {
                             Log.e("BlockPermanentScreen", "Error saving data: ${e.message}", e)
                         }

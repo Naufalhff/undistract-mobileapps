@@ -85,7 +85,8 @@ import kotlinx.coroutines.launch
 fun SetDailyUsageLimitScreen(
     navController: NavHostController,
     viewModel: SelectAppsViewModel,
-    usageLimitViewModel: UsageLimitViewModel
+    usageLimitViewModel: UsageLimitViewModel,
+    isParental: Boolean
 ) {
     requireNotNull(navController) { "NavController must not be null" }
     requireNotNull(viewModel) { "ViewModel must not be null" }
@@ -96,7 +97,8 @@ fun SetDailyUsageLimitScreen(
         factory = SetaDailyLimitViewModelFactory(
             SetaDailyLimitRepositoryImpl(
                 AppDatabase.getDatabase(context).setaDailyLimitDao()
-            )
+            ),
+            isParental
         )
     )
 
@@ -565,6 +567,7 @@ fun SetDailyUsageLimitScreen(
                                         packageName = app.packageName,
                                         icon = iconString,
                                         timeLimitMinutes = timeLimitMinutes,
+                                        isParental = isParental,
                                         notificationType = viewModel.selectedNotificationType.value
                                     )
                                 }
@@ -585,9 +588,8 @@ fun SetDailyUsageLimitScreen(
                                                         // Use a safer navigation approach
                                                         try {
                                                             // Navigate after a short delay to ensure the snackbar is shown
-
-                                                            navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                                // Use a simpler navigation with fewer options
+                                                            delay(500)
+                                                            navController.navigate("parental_usage_limit?isParental=$isParental") {
                                                                 popUpTo(navController.graph.startDestinationId)
                                                                 launchSingleTop = true
                                                             }

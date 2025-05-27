@@ -2,11 +2,9 @@ package com.example.undistract.features.parental_control.presentation
 
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,25 +12,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.example.undistract.ui.components.UnderConstructionScreen
-import kotlinx.coroutines.Delay
+import com.example.undistract.features.authentication.presentation.AuthenticationViewModel
+import com.example.undistract.ui.theme.ColorNew
 import kotlinx.coroutines.launch
 import com.example.undistract.features.parental_control.DeviceAdminUtils
 
 @Composable
 fun ParentalControlScreen(
     navController: NavController,
-    viewModel: ParentalControlViewModel,
+    viewModel: AuthenticationViewModel,
     pinLength: Int = 6
 ) {
     val isVerified by viewModel.isVerified.collectAsState()
@@ -56,7 +53,7 @@ fun ParentalControlScreen(
                 onVerificationSuccess = {
                     viewModel.setVerified(true)
                 },
-                navController = navController
+                navController = navController,
             )
         }
     }
@@ -80,12 +77,13 @@ fun ParentalControlScreen(
 
 @Composable
 fun PinVerificationContent(
-    viewModel: ParentalControlViewModel,
+    viewModel: AuthenticationViewModel,
     pinLength: Int = 6,
     onVerificationSuccess: () -> Unit,
     navController: NavController,
 ) {
     var pin by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     val context = LocalContext.current
     val focusRequesters = List(pinLength) { FocusRequester() }
 
@@ -107,7 +105,7 @@ fun PinVerificationContent(
             Column(modifier = Modifier.padding(16.dp)) {
                 val message = when (viewModel.hasPin) {
                     true -> "Masukkan PIN"
-                    false -> "Masukkan PIN baru"
+                    false -> "Masukkan Email"
                     else -> ""
                 }
 
@@ -117,27 +115,53 @@ fun PinVerificationContent(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // Cek jika PIN lengkap
-                LaunchedEffect(pin) {
-                    if (pin.length == pinLength) {
-                        if (viewModel.hasPin == true) {
-                            viewModel.viewModelScope.launch {
-                                val isCorrect = viewModel.verifyPin(pin)
-                                if (isCorrect) {
-                                    onVerificationSuccess()
-                                } else {
-                                    pin = ""
-                                    Toast.makeText(context, "PIN salah", Toast.LENGTH_SHORT).show()
+                if (viewModel.hasPin == false) {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
+
+                    Button(
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ColorNew.primary,
+                            contentColor = Color.White
+                        ),
+                        onClick = {
+                            if (email.isBlank()) {
+                                Toast.makeText(context, "Email tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.viewModelScope.launch {
+                                    viewModel.sendOtp(email)
+                                    // viewModel.setTempEmail(email) // (optional) simpan email sementara di ViewModel
+                                    navController.navigate("verifyOtp?email=$email")
                                 }
                             }
-                        } else {
-                            viewModel.viewModelScope.launch {
-                                viewModel.addPin(pin)
-                                Toast.makeText(context, "PIN berhasil disimpan", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Kirim OTP")
+                    }
+
+                    return@Column // Hentikan rendering PIN field jika belum ada PIN
+                }
+
+                // === PIN Input Only Shown if PIN Sudah Ada ===
+                LaunchedEffect(pin) {
+                    if (pin.length == pinLength) {
+                        viewModel.viewModelScope.launch {
+                            val isCorrect = viewModel.verifyPin(pin)
+                            if (isCorrect) {
+                                onVerificationSuccess()
+                            } else {
                                 pin = ""
-                                navController.navigate("parentalControl"){
-                                    launchSingleTop = true
-                                }
+                                Toast.makeText(context, "PIN salah", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -175,10 +199,29 @@ fun PinVerificationContent(
                             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
                             visualTransformation = PasswordVisualTransformation(),
                             placeholder = { Text("●") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.DarkGray
+                            )
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Lupa PIN?",
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable {
+                            navController.navigate("verifyOtp?email={email}")
+                        },
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline
+                    )
+                )
             }
         }
     }
