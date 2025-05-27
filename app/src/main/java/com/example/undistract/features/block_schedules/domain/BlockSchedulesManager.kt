@@ -1,27 +1,31 @@
 package com.example.undistract.features.block_schedules.domain
 
+import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import android.widget.Toast
-import com.example.undistract.core.AppAccessibilityService
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
-import java.time.LocalDate
-import java.time.LocalTime
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.time.LocalDate
+import java.time.LocalTime
 
 // Kelas untuk mengatur logika blokir aplikasi berdasarkan waktu
 class BlockScheduleManager(private val context: Context, private val dao: BlockSchedulesDao) {
 
     // Fungsi untuk memblokir aplikasi
-    fun blockApp() {
-        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(homeIntent)
+    fun blockApp (service: AccessibilityService) {
+        service.performGlobalAction(GLOBAL_ACTION_BACK)
+        Handler(Looper.getMainLooper()).postDelayed({
+            service.performGlobalAction(GLOBAL_ACTION_BACK)
+        }, 200)
+        Handler(Looper.getMainLooper()).postDelayed({
+            service.performGlobalAction(GLOBAL_ACTION_HOME)
+        }, 700)
     }
 
     // Fungsi untuk memeriksa apakah aplikasi diblokir dan dalam rentang waktu tertentu

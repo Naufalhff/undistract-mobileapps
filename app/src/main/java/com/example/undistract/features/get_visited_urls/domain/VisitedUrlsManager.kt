@@ -3,17 +3,37 @@ package com.example.undistract.features.get_visited_urls.domain
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.Patterns
 import android.view.accessibility.AccessibilityNodeInfo
+import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.net.URL
+import java.time.LocalTime
 
-class VisitedUrlsManager {
+class VisitedUrlsManager (
+    private val visitedUrlsRepository: VisitedUrlsRepository,
+    private val handleBlocking: (String, LocalTime) -> Unit,
+    private val getRootNode: () -> AccessibilityNodeInfo?,
+) {
     // Track processed nodes to avoid duplicates
     private val processedNodeIds = HashSet<Int>()
+    private var lastDetectedUrl: String? = null
+    private var urlConfirmationCount = 0
+    private val urlConfirmationThreshold = 3
+    private val pollingInterval = 2000L
+    private val minUrlCheckInterval = 1500L
+    private var lastUrlCheckTime = 0L
+    private var urlDetectionHandler: Handler? = Handler(Looper.getMainLooper())
+    private var urlDetectionRunnable: Runnable? = null
+    var isPollingUrl: Boolean = false
+        private set
 
     fun processNodeTree(
         node: AccessibilityNodeInfo?,
@@ -205,6 +225,86 @@ class VisitedUrlsManager {
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    fun startPolling() {
+        if (isPollingUrl) return
+
+        isPollingUrl = true
+        resetState()
+
+        urlDetectionRunnable = object : Runnable {
+            override fun run() {
+                if (!isPollingUrl) return
+
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastUrlCheckTime < minUrlCheckInterval) {
+                    urlDetectionHandler?.postDelayed(this, minUrlCheckInterval)
+                    return
+                }
+
+                lastUrlCheckTime = currentTime
+
+                getRootNode()?.let { root ->
+                    var foundUrl: String? = null
+                    var rawUrl: String? = null
+
+                    processNodeTree(root) { raw, normalized ->
+                        if (foundUrl == null) {
+                            foundUrl = normalized
+                            rawUrl = raw
+                        }
+                    }
+
+                    processDetection(foundUrl)
+                }
+
+                urlDetectionHandler?.postDelayed(this, pollingInterval)
+            }
+        }
+
+        urlDetectionHandler?.post(urlDetectionRunnable!!)
+    }
+
+    fun stopPolling() {
+        isPollingUrl = false
+        urlDetectionRunnable?.let {
+            urlDetectionHandler?.removeCallbacks(it)
+        }
+        urlDetectionRunnable = null
+    }
+
+    fun resetState() {
+        lastDetectedUrl = null
+        urlConfirmationCount = 0
+    }
+
+    private fun processDetection(detectedUrl: String?) {
+        if (detectedUrl == null) {
+            if (lastDetectedUrl != null) {
+                Log.d("UrlDetection", "URL cleared")
+                resetState()
+            }
+            return
+        }
+
+        if (detectedUrl == lastDetectedUrl) {
+            urlConfirmationCount++
+            Log.d("UrlDetection", "URL stable: $detectedUrl (count: $urlConfirmationCount)")
+
+            if (urlConfirmationCount == urlConfirmationThreshold) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val favicon = downloadFavicon(detectedUrl)
+                    visitedUrlsRepository.insertUrl(detectedUrl, favicon)
+                }
+
+                handleBlocking(detectedUrl, LocalTime.now())
+            }
+        } else {
+            Log.d("UrlDetection", "URL changed from '$lastDetectedUrl' to '$detectedUrl'")
+            lastDetectedUrl = detectedUrl
+            urlConfirmationCount = 1
         }
     }
 }

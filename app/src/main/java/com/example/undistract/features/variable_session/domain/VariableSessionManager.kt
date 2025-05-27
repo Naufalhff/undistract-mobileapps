@@ -1,5 +1,8 @@
 package com.example.undistract.features.variable_session.domain
 
+import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -72,7 +75,7 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         } ?: false
     }
 
-    fun startTimer(packageName: String, viewModel: VariableSessionViewModel) {
+    fun startTimer(packageName: String, viewModel: VariableSessionViewModel, service: AccessibilityService) {
         startTime = System.currentTimeMillis()
         elapsedSeconds = 0L
 
@@ -100,7 +103,7 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
                         Log.d("UsageTracker", "$packageName digunakan selama $elapsedSeconds detik")
 
                         delay(500)
-                        checkAndBlockApp(packageName)
+                        checkAndBlockApp(packageName, service)
                     }
                 }
                 handler.postDelayed(this, 1000)
@@ -143,7 +146,7 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         Log.d("UsageTracker", "Timer untuk $packageName telah dihentikan.")
     }
 
-    suspend fun checkAndBlockApp(packageName: String) {
+    suspend fun checkAndBlockApp(packageName: String, service: AccessibilityService) {
         val session = dao.getVariableSession(packageName).firstOrNull()
         val currentTime = System.currentTimeMillis()
         session?.let {
@@ -160,7 +163,7 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
                     Toast.makeText(context, "Session timed out, app blocked", Toast.LENGTH_SHORT).show()
                 }
                 dao.updateSecondsLeft(session.packageName, 0)
-                blockApp()
+                blockApp(service)
             } else {
                 Log.d("SessionInfo", "Sisa waktu: ${session.secondsLeft} detik")
             }
@@ -180,12 +183,14 @@ class VariableSessionManager(private val context: Context, private val dao: Vari
         } ?: true
     }
 
-    fun blockApp() {
-        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(homeIntent)
+    fun blockApp (service: AccessibilityService) {
+        service.performGlobalAction(GLOBAL_ACTION_BACK)
+        Handler(Looper.getMainLooper()).postDelayed({
+            service.performGlobalAction(GLOBAL_ACTION_BACK)
+        }, 200)
+        Handler(Looper.getMainLooper()).postDelayed({
+            service.performGlobalAction(GLOBAL_ACTION_HOME)
+        }, 700)
     }
 
     fun showToast(message: String) {

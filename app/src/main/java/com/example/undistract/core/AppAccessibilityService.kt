@@ -3,12 +3,15 @@ package com.example.undistract.core
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
+import com.example.undistract.features.block_permanent.domain.BlockPermanentManager
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.get_visited_urls.domain.VisitedUrlsManager
@@ -22,23 +25,24 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
-import android.os.Handler
-import android.os.Looper
-
-
 
 class AppAccessibilityService : AccessibilityService() {
 
+    private lateinit var blockPermanentManager: BlockPermanentManager
     private lateinit var blockScheduleManager: BlockScheduleManager
     private lateinit var variableSessionManager: VariableSessionManager
     private lateinit var visitedUrlsRepository: VisitedUrlsRepository
-    private val visitedUrlsManager by lazy { VisitedUrlsManager() }
+    private lateinit var visitedUrlsManager: VisitedUrlsManager
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
+
+    // URL Detection State Management
+    private var isPollingUrl = false
+    private var urlDetectionHandler: Handler? = null
 
     // Ignore ketika user mengetik
     val keyboardPackages = listOf(
@@ -62,10 +66,16 @@ class AppAccessibilityService : AccessibilityService() {
         visitedUrlsRepository = VisitedUrlsRepository(visitedUrlsDao)
 
         // Inisialisasi manager
+        blockPermanentManager = BlockPermanentManager()
         blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
+        visitedUrlsManager = VisitedUrlsManager (
+            visitedUrlsRepository,
+            ::handleAppBlocking,
+            { rootInActiveWindow }
+        )
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -75,6 +85,9 @@ class AppAccessibilityService : AccessibilityService() {
             notificationTimeout = 100
         }
         serviceInfo = info
+
+        // Initialize URL detection handler
+        urlDetectionHandler = Handler(Looper.getMainLooper())
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -109,67 +122,38 @@ class AppAccessibilityService : AccessibilityService() {
 
         if ((event.eventType and supportedEvents) != 0) {
             val currentTime = LocalTime.now()
-            var isPollingUrl = false
-
-            if (packageName in keyboardPackages) return
-
-            var detectedUrl: String? = null
-            var rawUrl: String? = null
 
             if (packageName in keyboardPackages) return
 
             if (packageName in browserPackages) {
+                handleAppBlocking(packageName, currentTime)
 
                 if (!isPollingUrl) {
-                    isPollingUrl = true
-
-                    Handler(Looper.getMainLooper()).post(object : Runnable {
-                        override fun run() {
-                            if (!isPollingUrl) return
-
-                            val rootNode = rootInActiveWindow
-                            rootNode?.let {
-                                visitedUrlsManager.processNodeTree(it) { raw, normalized ->
-                                    Log.d("PollingURL", "Detected URL (polling): $normalized")
-                                    // Optional: bisa update rawUrl / detectedUrl global
-                                    rawUrl = raw
-                                    detectedUrl = normalized
-
-                                    // Lakukan pengecekan blokir di sini kalau mau real-time
-                                    val currentIdentifier = detectedUrl ?: packageName
-                                    val currentTime = LocalTime.now()
-
-                                    handleAppBlocking(currentIdentifier, currentTime)
-                                }
-                            }
-
-                            Handler(Looper.getMainLooper()).postDelayed(this, 1000) // Cek setiap 1 detik
-                        }
-                    })
+                    visitedUrlsManager.startPolling()
                 }
+
+                return
             } else {
-                isPollingUrl = false
+                visitedUrlsManager.stopPolling()
+                visitedUrlsManager.resetState()
             }
 
-            if (detectedUrl == "Detik.com") return
-
-            if (detectedUrl != null && rawUrl != null) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val favicon = visitedUrlsManager.downloadFavicon(detectedUrl!!)
-                    visitedUrlsRepository.insertUrl(detectedUrl!!, favicon)
-                }
-            }
-
-            val currentIdentifier = detectedUrl ?: packageName
+            val currentIdentifier = packageName
             Log.d("CurrentIdentifier", "Identifier: $currentIdentifier")
-
             handleAppBlocking(currentIdentifier, currentTime)
         }
     }
 
     override fun onInterrupt() {
         Log.d("BlockApp", "Service terputus!")
+        visitedUrlsManager.stopPolling()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        visitedUrlsManager.stopPolling()
+    }
+
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     private fun loadBlockedApps() {
@@ -180,6 +164,7 @@ class AppAccessibilityService : AccessibilityService() {
             }
         }
     }
+
     private fun isAppBlocked(packageName: String): Boolean {
         return blockedApps.any { it.packageName == packageName && it.isActive }
     }
@@ -196,7 +181,7 @@ class AppAccessibilityService : AccessibilityService() {
                     Toast.makeText(this@AppAccessibilityService, "This app is blocked!", Toast.LENGTH_SHORT).show()
                 }
                 Log.d("BlockApp", "Menutup aplikasi: $currentIdentifier")
-                blockScheduleManager.blockApp()
+                blockScheduleManager.blockApp(this@AppAccessibilityService)
                 return@launch
             }
 
@@ -205,7 +190,7 @@ class AppAccessibilityService : AccessibilityService() {
                 withContext(Dispatchers.Main) {
                     variableSessionManager.showToast("This app is still on cool down period!")
                 }
-                variableSessionManager.blockApp()
+                variableSessionManager.blockApp(this@AppAccessibilityService)
                 return@launch
             }
 
@@ -225,7 +210,7 @@ class AppAccessibilityService : AccessibilityService() {
                         variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
                     }
 
-                    variableSessionManager.startTimer(currentIdentifier, variableSessionViewModel)
+                    variableSessionManager.startTimer(currentIdentifier, variableSessionViewModel, this@AppAccessibilityService)
                     lastPackageName = currentIdentifier
                 }
             } else {
@@ -247,16 +232,7 @@ class AppAccessibilityService : AccessibilityService() {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@AppAccessibilityService, "App $appName is blocked!", Toast.LENGTH_SHORT).show()
                     }
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        performGlobalAction(GLOBAL_ACTION_BACK)
-                    }, 200)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        performGlobalAction(GLOBAL_ACTION_RECENTS)
-                    }, 400)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        performGlobalAction(GLOBAL_ACTION_HOME)
-                    }, 700)
+                    blockPermanentManager.blockApp(this@AppAccessibilityService)
                 } else {
                     Log.d("AccessibilityService", "App is not blocked: $currentIdentifier")
                 }
