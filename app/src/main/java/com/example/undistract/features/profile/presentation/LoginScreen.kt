@@ -1,5 +1,8 @@
 package com.example.undistract.features.profile.presentation
 
+
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,26 +23,54 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.undistract.MainActivity
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.core.ApiAuthClient
+import com.example.undistract.core.ApiBackendClient
+import com.example.undistract.core.ApiService
+import com.example.undistract.core.SyncRepository
+import com.example.undistract.core.SyncViewModel
+import com.example.undistract.features.profile.AuthActivity
+import com.example.undistract.features.profile.data.AuthRepository
+import com.example.undistract.features.profile.data.AuthViewModel
+import com.example.undistract.features.profile.data.AuthViewModelFactory
 
 @Composable
-fun LoginScreen(auth: FirebaseAuth) {
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
+fun LoginScreen() {
+    val context = LocalContext.current
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
     var btnSwitch by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
-    
+
     val logo: Painter = painterResource(id = com.example.undistract.R.drawable.app_logo)
     val visibility: Painter = painterResource(id = com.example.undistract.R.drawable.visibility_icon)
     val visibilityOff: Painter = painterResource(id = com.example.undistract.R.drawable.visibilityoff_icon)
 
+    val apiService = ApiAuthClient.create(context)
+    val repository = AuthRepository(apiService, context)
+    val factory = remember { AuthViewModelFactory(repository) }
+    val viewModel: AuthViewModel = viewModel(factory = factory)
+    val loginResult by viewModel.loginResult.collectAsState()
+    val registerResult by viewModel.registerResult.collectAsState()
 
+    val syncRepository = SyncRepository(
+        AppDatabase.getDatabase(context).blockSchedulesDao(),
+        AppDatabase.getDatabase(context).variableSessionDao(),
+        AppDatabase.getDatabase(context).blockPermanentDao(),
+        AppDatabase.getDatabase(context).setaDailyLimitDao(),
+        AppDatabase.getDatabase(context).pinDao(),
+        ApiBackendClient.apiService,
+        context
+    )
+    val syncViewModel = SyncViewModel(syncRepository)
 
     Box(
         modifier = Modifier
@@ -130,21 +161,10 @@ fun LoginScreen(auth: FirebaseAuth) {
                     .padding(16.dp)
             ) {
                 if (!btnSwitch) {
-                    TextField(
-                        value = firstName,
-                        onValueChange = { firstName = it },
-                        label = { Text("First Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            disabledContainerColor = Color.Gray
-                        )
-                    )
 
                     TextField(
-                        value = lastName,
-                        onValueChange = { lastName = it },
+                        value = username,
+                        onValueChange = { username = it },
                         label = { Text("Last Name") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
@@ -190,48 +210,44 @@ fun LoginScreen(auth: FirebaseAuth) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    if (btnSwitch) {
-                        Button(onClick = {
-                            auth.signInWithEmailAndPassword(email, password)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        message = "Login Berhasil!"
-                                    } else {
-                                        message = "Login Gagal: ${task.exception?.message}"
-                                    }
-                                }
+                    Button(
+                        onClick = {
+                            if (btnSwitch) viewModel.login(email, password)
+                            else viewModel.register(username, email, password)
                         },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(102,42,178)
-                            ),
-                            shape = RoundedCornerShape(4.dp)) {
-                            Text("Login")
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(102, 42, 178)),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(if (btnSwitch) "Login" else "Register")
+                    }
+
+                    loginResult?.let { result ->
+                        LaunchedEffect(result) {
+                            val text = if (result) "Login sukses!" else "Login gagal!"
+                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+
+                            if (result) {
+                                val intent = Intent(context, MainActivity::class.java)
+                                syncViewModel.fetchAllData(context)
+                                context.startActivity(intent)
+                            }
                         }
-                    } else {
-                        Button(onClick = {
-                            auth.createUserWithEmailAndPassword(email, password)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        message = "Akun Berhasil Dibuat!"
-                                    } else {
-                                        message = "Gagal Mendaftar: ${task.exception?.message}"
-                                    }
-                                }
-                        },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(102,42,178)
-                            ),
-                            shape = RoundedCornerShape(4.dp)) {
-                            Text("Daftar")
+                    }
+
+                    registerResult?.let { result ->
+                        LaunchedEffect(result) {
+                            val text = if (result) "Register sukses!" else "Register gagal!"
+                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+
+                            if (result){
+                                btnSwitch = true
+                            }
                         }
                     }
 
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(message)
             }
         }
     }

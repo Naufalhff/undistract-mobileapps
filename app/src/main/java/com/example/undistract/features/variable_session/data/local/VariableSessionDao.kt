@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface VariableSessionDao {
+
     @Query("SELECT * FROM variable_session_table")
     fun getAllVariableSession(): Flow<List<VariableSessionEntity>>
 
@@ -38,4 +39,18 @@ interface VariableSessionDao {
 
     @Query("UPDATE variable_session_table SET coolDownEndTime = :coolDownEndTime WHERE packageName = :packageName")
     suspend fun updateCoolDownEndTime(packageName: String, coolDownEndTime: Long?)
+
+
+    // Query sync remote
+    @Query("SELECT * FROM variable_session_table")
+    fun getAll(): List<VariableSessionEntity>
+
+    @Query("DELETE FROM variable_session_table WHERE isSynced = 1")
+    suspend fun clearAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<VariableSessionEntity>)
+
+    @Query("UPDATE variable_session_table SET isSynced = 1 WHERE isSynced = 0")
+    suspend fun markAllAsSynced()
 }

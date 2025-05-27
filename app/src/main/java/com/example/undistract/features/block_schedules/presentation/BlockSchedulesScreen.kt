@@ -16,14 +16,40 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -32,9 +58,9 @@ import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
 import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
-import com.example.undistract.features.get_installed_apps.domain.AppInfo
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
+import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.navigation.BottomNavItem
@@ -56,12 +82,10 @@ fun BlockSchedulesScreen(
         factory = BlockSchedulesViewModelFactory(repository, isParental)
     )
     // Mengambil selected apps
-    selectAppViewModel.updateCurrentRoute("block_schedules")
-    val selectedApps = selectAppViewModel.getSelectedApps()
+    val selectedApps = selectAppViewModel.getSelectedIdentifiers()
     val database = AppDatabase.getDatabase(context)
     val blockSchedulesDao = database.blockSchedulesDao()
     val blockScheduleManager = BlockScheduleManager(context, blockSchedulesDao)
-    val listApps = blockScheduleManager.getAppInfoFromPackageNames(context, selectedApps)
 
     // State untuk hari yang dipilih
     val days = listOf("S", "M", "T", "W", "T", "F", "S")
@@ -74,6 +98,15 @@ fun BlockSchedulesScreen(
     var startTime by remember { mutableStateOf(LocalTime.of(0, 0)) }
     var endTime by remember { mutableStateOf(LocalTime.of(0, 0)) }
     var isAllDay by remember { mutableStateOf(false) }
+    var listApps by remember { mutableStateOf<List<AppOrUrlItem>>(emptyList()) }
+
+    val combinedItems by selectAppViewModel.combinedItems.collectAsState()
+
+    LaunchedEffect(selectedApps, combinedItems) {
+        listApps = combinedItems.filter { item ->
+            selectedApps.contains(item.identifier)
+        }
+    }
 
     // Formatter untuk menampilkan waktu
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -103,13 +136,6 @@ fun BlockSchedulesScreen(
                 color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.weight(1f)
             )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            GetAppInfo(context, selectedApps)
         }
 
         Column(
@@ -269,15 +295,25 @@ fun BlockSchedulesScreen(
                             startTime == endTime -> Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
                             else -> coroutineScope.launch {
                                 try {
+                                    val appsToSave = listApps.map { app -> app.name to app.identifier }
                                     viewModel.addBlockSchedules(
-                                        apps = listApps,
+                                        apps = appsToSave,
                                         daysOfWeek = selectedDays.value.toList().toString(),
                                         isAllDay = isAllDay,
                                         startTime = startTime.toString(),
                                         endTime = endTime.toString(),
-                                        isActive = true
+                                        isActive = true,
+                                        isParental = isParental
                                     )
-                                    navController.navigate("parental_usage_limit?isParental=$isParental")
+                                    if (isParental){
+                                        navController.navigate("parental_usage_limit?isParental=true"){
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        navController.navigate(BottomNavItem.UsageLimit.route){
+                                            launchSingleTop = true
+                                        }
+                                    }
                                     Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -333,66 +369,5 @@ fun DaySelector(
                 fontWeight = FontWeight.Bold
             )
         }
-    }
-
-}
-
-@Composable
-fun GetAppInfo(context: Context, packageName: List<String>) {
-    val packageManager = context.packageManager
-
-    // Coba ambil info aplikasi
-    val app = try {
-        packageManager.getApplicationInfo(packageName.firstOrNull()?: "", PackageManager.GET_META_DATA)
-    } catch (e: PackageManager.NameNotFoundException) {
-        null
-    }
-
-    if (app != null) {
-        val appInfo = AppInfo(
-            name = packageManager.getApplicationLabel(app).toString(),
-            packageName = app.packageName,
-            icon = app.loadIcon(packageManager)
-        )
-
-        // Tampilkan di UI
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text("Selected Apps:", style = MaterialTheme.typography.labelLarge)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            )  {
-                // Menampilkan ikon aplikasi
-                Image(
-                    painter = rememberAsyncImagePainter(appInfo.icon),
-                    contentDescription = appInfo.name,
-                    modifier = Modifier.size(36.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Nama aplikasi
-                val displayText = when {
-                    packageName.isEmpty() -> "No apps selected"
-                    packageName.size == 1 -> appInfo.name
-                    else -> "${appInfo.name}, and ${packageName.size - 1} more"
-                }
-
-                Text(
-                    text = displayText,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    } else {
-        Text("No app selected", style = MaterialTheme.typography.bodyLarge)
     }
 }

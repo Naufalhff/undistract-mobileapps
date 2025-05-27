@@ -22,7 +22,8 @@ class BlockSchedulesViewModel(
         isAllDay: Boolean,
         startTime: String?,
         endTime: String?,
-        isActive: Boolean
+        isActive: Boolean,
+        isParental: Boolean
     ) {
         viewModelScope.launch {
             repository.addBlockSchedulesForMultipleApps(

@@ -74,10 +74,11 @@ import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
+import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.ui.navigation.BottomNavItem
-import com.example.undistract.ui.theme.Purple40
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,8 +115,10 @@ fun SetDailyUsageLimitScreen(
     var disruptionExpanded by remember { mutableStateOf(false) }
     var selectedDisruptionOption by remember { mutableStateOf("Head Notification") }
     val disruptionOptions = listOf("Head Notification", "Pop Up Notification", "Block Application")
-    var selectedLimitOption by remember { mutableStateOf("Set a Daily Usage Limit") }
-    val selectedApps by remember { mutableStateOf(viewModel.getSelectedAppsInfo()) }
+    var expanded by remember { mutableStateOf(false) }
+    val limitOptions = remember { listOf("Set a Daily Usage Limit", "Block Permanently", "Block on a Schedule") }
+    var selectedLimitOption by remember { mutableStateOf(limitOptions[0]) }
+    val selectedApps by remember { mutableStateOf(viewModel.getSelectedItems()) }
     var showAppsDialog by remember { mutableStateOf(false) }
 
     // Time options lists
@@ -542,7 +545,7 @@ fun SetDailyUsageLimitScreen(
                         try {
                             Log.d("SetaDailyLimit", "Save button clicked")
                             val timeLimitMinutes = (selectedHours.toInt() * 60) + selectedMinutes.toInt()
-                            val selectedAppsInfo = viewModel.getSelectedAppsInfo()
+                            val selectedAppsInfo = viewModel.getSelectedItems()
 
                             Log.d("SetaDailyLimit", "Selected apps: ${selectedAppsInfo.size}, time limit: $timeLimitMinutes minutes")
 
@@ -564,7 +567,7 @@ fun SetDailyUsageLimitScreen(
 
                                     SetaDailyLimitEntity(
                                         appName = app.name,
-                                        packageName = app.packageName,
+                                        packageName = app.identifier,
                                         icon = iconString,
                                         timeLimitMinutes = timeLimitMinutes,
                                         isParental = isParental,
@@ -587,11 +590,14 @@ fun SetDailyUsageLimitScreen(
 
                                                         // Use a safer navigation approach
                                                         try {
-                                                            // Navigate after a short delay to ensure the snackbar is shown
-                                                            delay(500)
-                                                            navController.navigate("parental_usage_limit?isParental=$isParental") {
-                                                                popUpTo(navController.graph.startDestinationId)
-                                                                launchSingleTop = true
+                                                            if (isParental){
+                                                                navController.navigate("parental_usage_limit?isParental=true"){
+                                                                    launchSingleTop = true
+                                                                }
+                                                            } else {
+                                                                navController.navigate(BottomNavItem.UsageLimit.route){
+                                                                    launchSingleTop = true
+                                                                }
                                                             }
                                                         } catch (e: Exception) {
                                                             Log.e("SetaDailyLimit", "Navigation error", e)

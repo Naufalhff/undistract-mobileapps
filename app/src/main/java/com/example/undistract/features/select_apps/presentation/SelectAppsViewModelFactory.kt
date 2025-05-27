@@ -3,21 +3,25 @@ package com.example.undistract.features.select_apps.presentation
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.undistract.features.get_installed_apps.data.InstalledAppsRepository
-import com.example.undistract.features.get_installed_apps.domain.GetInstalledAppsUseCase
+import com.example.undistract.features.get_app_data.data.AppDataRepository
+import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.select_apps.data.SelectAppsRepository
 
 class SelectAppsViewModelFactory(
     private val context: Context,
-    private val selectAppsRepository: SelectAppsRepository = SelectAppsRepository()
+    private val selectAppsRepository: SelectAppsRepository = SelectAppsRepository(),
+    private val visitedUrlsRepository: VisitedUrlsRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SelectAppsViewModel::class.java)) {
-            val repository = InstalledAppsRepository(context)
-            val useCase = GetInstalledAppsUseCase(repository)
+            // Membuat repository untuk aplikasi yang diinstal dengan VisitedUrlsRepository
+            val appDataRepository = AppDataRepository(context, visitedUrlsRepository)
+
+            // Membuat ViewModel dan memberikan parameter yang diperlukan
             @Suppress("UNCHECKED_CAST")
-            return SelectAppsViewModel(useCase, selectAppsRepository, context) as T
+            return SelectAppsViewModel(appDataRepository, selectAppsRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

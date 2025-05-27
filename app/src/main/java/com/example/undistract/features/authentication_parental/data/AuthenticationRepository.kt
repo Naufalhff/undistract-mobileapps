@@ -1,10 +1,10 @@
-package com.example.undistract.features.authentication.data
+package com.example.undistract.features.authentication_parental.data
 
 import com.example.undistract.core.ApiService
 import com.example.undistract.core.SendOtpRequest
 import com.example.undistract.core.VerifyOtpRequest
-import com.example.undistract.features.authentication.data.local.PinDao
-import com.example.undistract.features.authentication.data.local.PinEntity
+import com.example.undistract.features.authentication_parental.data.local.PinDao
+import com.example.undistract.features.authentication_parental.data.local.PinEntity
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -40,7 +40,8 @@ class AuthenticationRepository(
     ) {
         val pinEntity = PinEntity(
             pin = pin,
-            email = email
+            email = email,
+            isSynced = false
         )
         pinDao.savePin(pinEntity)
     }

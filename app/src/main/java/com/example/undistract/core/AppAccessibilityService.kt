@@ -3,8 +3,6 @@ package com.example.undistract.core
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
@@ -12,33 +10,42 @@ import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
+import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
+import com.example.undistract.features.get_visited_urls.domain.VisitedUrlsManager
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
-import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
-import com.example.undistract.features.usage_stats.UsageStatsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
+import android.os.Handler
+import android.os.Looper
+
+
 
 class AppAccessibilityService : AccessibilityService() {
 
     private lateinit var blockScheduleManager: BlockScheduleManager
     private lateinit var variableSessionManager: VariableSessionManager
+    private lateinit var visitedUrlsRepository: VisitedUrlsRepository
+    private val visitedUrlsManager by lazy { VisitedUrlsManager() }
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
-    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
-    private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
+
+    // Ignore ketika user mengetik
+    val keyboardPackages = listOf(
+        "com.google.android.inputmethod.latin",
+        "com.microsoft.swiftkey",
+        "com.samsung.android.honeyboard"
+    )
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -46,17 +53,19 @@ class AppAccessibilityService : AccessibilityService() {
 
         // Inisialisasi database dan dao
         val database = AppDatabase.getDatabase(this)
+        val visitedUrlsDao = database.visitedUrlsDao()
+        val blockPermanentDao = database.blockPermanentDao()
         val blockSchedulesDao = database.blockSchedulesDao()
         val variableSessionDao = database.variableSessionDao()
-        blockPermanentRepository = BlockPermanentRepository(database.blockPermanentDao())
-        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
+
+        blockPermanentRepository = BlockPermanentRepository(blockPermanentDao)
+        visitedUrlsRepository = VisitedUrlsRepository(visitedUrlsDao)
 
         // Inisialisasi manager
         blockScheduleManager = BlockScheduleManager(this, blockSchedulesDao)
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
-        usageStatsManager = UsageStatsManager(this)
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -64,161 +73,97 @@ class AppAccessibilityService : AccessibilityService() {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             notificationTimeout = 100
-            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         }
         serviceInfo = info
-
-//        // Cek apakah ini pertama kali setelah instalasi
-//        val sharedPreferences = getSharedPreferences("AppPrefs", MODE_PRIVATE)
-//        val isFirstRun = sharedPreferences.getBoolean("isFirstRun", true)
-//
-//        if (isFirstRun) {
-//            Log.d("ACCESSIBILITY_SERVICE", "First time setup, running handler")
-//
-//            Handler(Looper.getMainLooper()).postDelayed({
-//                Log.d("ACCESSIBILITY_SERVICE", "Restarting service for better event detection")
-//                disableSelf()  // Menonaktifkan layanan sementara
-//            }, 1000)
-//
-//            sharedPreferences.edit().putBoolean("isFirstRun", false).apply()
-//        } else {
-//            Log.d("ACCESSIBILITY_SERVICE", "Service already initialized, skipping handler")
-//            sharedPreferences.edit().putBoolean("isFirstRun", true).apply()
-//        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val context = this
+        event ?: return
 
-        // Ignore ketika user mengetik
-        val keyboardPackages = listOf(
-            "com.google.android.inputmethod.latin",
-            "com.microsoft.swiftkey",
-            "com.samsung.android.honeyboard"
+        val packageName = event.packageName?.toString() ?: return
+
+        val supportedEvents =
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                    AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                    AccessibilityEvent.TYPE_VIEW_SCROLLED or
+                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
+                    AccessibilityEvent.TYPE_VIEW_FOCUSED
+
+        val browserPackages = setOf(
+            "com.android.chrome",
+            "org.mozilla.firefox",
+            "com.microsoft.emmx",
+            "com.brave.browser",
+            "com.sec.android.app.sbrowser",
+            "com.opera.browser",
+            "com.opera.mini.native",
+            "com.UCMobile.intl",
+            "com.duckduckgo.mobile.android",
+            "com.vivaldi.browser",
+            "com.kiwibrowser.browser",
+            "com.yandex.browser",
+            "org.torproject.torbrowser",
+            "com.cloudmosa.puffinFree",
+            "com.transsion.phoenix"
         )
 
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val packageName = event.packageName?.toString() ?: "Nama Package gagal diambil"
+        if ((event.eventType and supportedEvents) != 0) {
             val currentTime = LocalTime.now()
+            var isPollingUrl = false
 
-            Log.d("DEBUG_ACCESSIBILITY", "Event Type: ${event.eventType}, Package Name: $packageName")
+            if (packageName in keyboardPackages) return
 
-            // Skip jika aplikasi yang dibuka adalah Undistract
-            if (packageName == context.packageName) {
-                Log.d("DEBUG_ACCESSIBILITY", "Aplikasi Undistract dibuka, skip dialog")
-                return
-            }
+            var detectedUrl: String? = null
+            var rawUrl: String? = null
 
-            serviceScope.launch {
-                // BLOCK ON SCHEDULES
-                if (blockScheduleManager.shouldBlockApp(packageName, currentTime)) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "This app is blocked!", Toast.LENGTH_SHORT).show()
-                    }
-                    Log.d("BlockApp", "Menutup aplikasi: $packageName")
-                    blockScheduleManager.blockApp()
-                    return@launch
-                }
+            if (packageName in keyboardPackages) return
 
-                // VARIABLE SESSION LIMIT
-                if (!variableSessionManager.canStartNewSession(packageName)) {
-                    withContext(Dispatchers.Main) {
-                        variableSessionManager.showToast("This app is still on cool down period!")
-                    }
-                    variableSessionManager.blockApp()
-                    return@launch
-                }
+            if (packageName in browserPackages) {
 
-                if (variableSessionManager.askLimit(packageName)) {
-                    withContext(Dispatchers.Main) {
-                        val intent = Intent(context, VariableSessionDialogActivity::class.java).apply {
-                            putExtra("PACKAGE_NAME", packageName)
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(intent)
-                    }
-                }
+                if (!isPollingUrl) {
+                    isPollingUrl = true
 
-                if (variableSessionManager.isLimitedApp(packageName)) {
-                    if (lastPackageName != packageName && !keyboardPackages.contains(packageName)) {
-                        lastPackageName?.let { previousPackage ->
-                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
-                        }
+                    Handler(Looper.getMainLooper()).post(object : Runnable {
+                        override fun run() {
+                            if (!isPollingUrl) return
 
-                        variableSessionManager.startTimer(packageName, variableSessionViewModel)
-                        lastPackageName = packageName
-                    }
-                } else {
-                    if (lastPackageName != null && !keyboardPackages.contains(packageName)) {
-                        lastPackageName?.let { previousPackage ->
-                            variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
-                        }
-                        lastPackageName = null
-                    }
-                }
+                            val rootNode = rootInActiveWindow
+                            rootNode?.let {
+                                visitedUrlsManager.processNodeTree(it) { raw, normalized ->
+                                    Log.d("PollingURL", "Detected URL (polling): $normalized")
+                                    // Optional: bisa update rawUrl / detectedUrl global
+                                    rawUrl = raw
+                                    detectedUrl = normalized
 
-                // BLOCK PERMANENT
-                Log.d("AccessibilityService", "Checking if $packageName is blocked...")
+                                    // Lakukan pengecekan blokir di sini kalau mau real-time
+                                    val currentIdentifier = detectedUrl ?: packageName
+                                    val currentTime = LocalTime.now()
 
-                if (::blockedApps.isInitialized) {
-                    if (isAppBlocked(packageName)) {
-                        val appName = getAppName(packageName)
-                        Log.d("AccessibilityService", "App is blocked: $packageName ($appName)")
-                        withContext(Dispatchers.Main){
-                            Toast.makeText(context, "App $appName is blocked!", Toast.LENGTH_SHORT).show()
-                        }
-                        val intent = Intent(Intent.ACTION_MAIN)
-                        intent.addCategory(Intent.CATEGORY_HOME)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-                    } else {
-                        Log.d("AccessibilityService", "App is not blocked: $packageName")
-                    }
-                } else {
-                    Log.d("AccessibilityService", "Blocked apps not initialized yet.")
-                }
-
-                // Check if the app has reached its daily limit
-                val limit = setaDailyLimitRepository.getByPackageName(packageName)
-                if (limit != null && usageStatsManager.hasReachedLimit(packageName, limit.timeLimitMinutes)) {
-                    // Hanya tampilkan dialog jika aplikasi yang dibuka bukan Undistract dan toggle aktif
-                    if (packageName != context.packageName && limit.isActive) {
-                        // Ubah bagian ini untuk memeriksa tipe notifikasi
-                        when (limit.notificationType) {
-                            "Block Application" -> {
-                                // Block the application and return to home
-                                Log.d("AccessibilityService", "Blocking application: ${limit.appName}")
-                                val intent = Intent(Intent.ACTION_MAIN)
-                                intent.addCategory(Intent.CATEGORY_HOME)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                startActivity(intent)
-
-                                // Tampilkan pesan "App Blocked"
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "App ${limit.appName} is blocked!", Toast.LENGTH_LONG).show()
+                                    handleAppBlocking(currentIdentifier, currentTime)
                                 }
                             }
-                            "Pop Up Notification" -> {
-                                // Only show dialog for Pop Up Notification type
-                                withContext(Dispatchers.Main) {
-                                    val intent = Intent(context, DailyLimitDialogActivity::class.java).apply {
-                                        putExtra("APP_NAME", limit.appName)
-                                        putExtra("PACKAGE_NAME", packageName)
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            }
-                            "Head Notification" -> {
-                                // Skip dialog for Head Notification - UsageMonitorService will handle this
-                                Log.d("AccessibilityService", "Skipping dialog for Head Notification type: ${limit.appName}")
-                            }
+
+                            Handler(Looper.getMainLooper()).postDelayed(this, 1000) // Cek setiap 1 detik
                         }
-                    } else {
-                        Log.d("AccessibilityService", "Skipping daily limit dialog for Undistract app itself or toggle is off")
-                    }
+                    })
+                }
+            } else {
+                isPollingUrl = false
+            }
+
+            if (detectedUrl == "Detik.com") return
+
+            if (detectedUrl != null && rawUrl != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val favicon = visitedUrlsManager.downloadFavicon(detectedUrl!!)
+                    visitedUrlsRepository.insertUrl(detectedUrl!!, favicon)
                 }
             }
+
+            val currentIdentifier = detectedUrl ?: packageName
+            Log.d("CurrentIdentifier", "Identifier: $currentIdentifier")
+
+            handleAppBlocking(currentIdentifier, currentTime)
         }
     }
 
@@ -241,5 +186,83 @@ class AppAccessibilityService : AccessibilityService() {
 
     private fun getAppName(packageName: String): String {
         return blockedApps.find { it.packageName == packageName }?.appName ?: packageName
+    }
+
+    private fun handleAppBlocking(currentIdentifier: String, currentTime: LocalTime) {
+        serviceScope.launch {
+            // BLOCK ON SCHEDULES
+            if (blockScheduleManager.shouldBlockApp(currentIdentifier, currentTime)) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@AppAccessibilityService, "This app is blocked!", Toast.LENGTH_SHORT).show()
+                }
+                Log.d("BlockApp", "Menutup aplikasi: $currentIdentifier")
+                blockScheduleManager.blockApp()
+                return@launch
+            }
+
+            // VARIABLE SESSION LIMIT
+            if (!variableSessionManager.canStartNewSession(currentIdentifier)) {
+                withContext(Dispatchers.Main) {
+                    variableSessionManager.showToast("This app is still on cool down period!")
+                }
+                variableSessionManager.blockApp()
+                return@launch
+            }
+
+            if (variableSessionManager.askLimit(currentIdentifier)) {
+                withContext(Dispatchers.Main) {
+                    val intent = Intent(this@AppAccessibilityService, VariableSessionDialogActivity::class.java).apply {
+                        putExtra("PACKAGE_NAME", currentIdentifier)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                }
+            }
+
+            if (variableSessionManager.isLimitedApp(currentIdentifier)) {
+                if (lastPackageName != currentIdentifier && !keyboardPackages.contains(currentIdentifier)) {
+                    lastPackageName?.let { previousPackage ->
+                        variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                    }
+
+                    variableSessionManager.startTimer(currentIdentifier, variableSessionViewModel)
+                    lastPackageName = currentIdentifier
+                }
+            } else {
+                if (lastPackageName != null && !keyboardPackages.contains(currentIdentifier)) {
+                    lastPackageName?.let { previousPackage ->
+                        variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
+                    }
+                    lastPackageName = null
+                }
+            }
+
+            // BLOCK PERMANENT
+            Log.d("AccessibilityService", "Checking if $currentIdentifier is blocked...")
+
+            if (::blockedApps.isInitialized) {
+                if (isAppBlocked(currentIdentifier)) {
+                    val appName = getAppName(currentIdentifier)
+                    Log.d("AccessibilityService", "App is blocked: $currentIdentifier ($appName)")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@AppAccessibilityService, "App $appName is blocked!", Toast.LENGTH_SHORT).show()
+                    }
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                    }, 200)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        performGlobalAction(GLOBAL_ACTION_RECENTS)
+                    }, 400)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+                    }, 700)
+                } else {
+                    Log.d("AccessibilityService", "App is not blocked: $currentIdentifier")
+                }
+            } else {
+                Log.d("AccessibilityService", "Blocked apps not initialized yet.")
+            }
+        }
     }
 }
