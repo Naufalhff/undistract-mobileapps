@@ -49,11 +49,11 @@ object ColorNew {
 
 @Composable
 fun UndistractTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = false  // <- Paksa ke light mode
+    val dynamicColor = false  // <- Matikan dynamic color biar warnanya tetap
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
