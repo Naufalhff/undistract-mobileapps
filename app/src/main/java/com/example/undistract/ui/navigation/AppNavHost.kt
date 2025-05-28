@@ -236,7 +236,7 @@ fun AppNavHost(context: Context) {
                     )
                     SetDailyUsageLimitScreen(
                         navController = navController,
-                        viewModel = selectAppsViewModel,
+                        selectAppsViewModel = selectAppsViewModel,
                         usageLimitViewModel = usageLimitViewModel,
                         isParental = isParental
                     )

@@ -2,7 +2,6 @@ package com.example.undistract.features.setadaily_limit.presentation
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,14 +18,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,12 +35,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,38 +54,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
-import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.ui.navigation.BottomNavItem
+import com.example.undistract.ui.theme.Purple40
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetDailyUsageLimitScreen(
     navController: NavHostController,
-    viewModel: SelectAppsViewModel,
+    selectAppsViewModel: SelectAppsViewModel,
     usageLimitViewModel: UsageLimitViewModel,
     isParental: Boolean
 ) {
-    requireNotNull(navController) { "NavController must not be null" }
-    requireNotNull(viewModel) { "ViewModel must not be null" }
-    requireNotNull(usageLimitViewModel) { "UsageLimitViewModel must not be null" }
 
     val context = LocalContext.current
     val setaDailyLimitViewModel: SetaDailyLimitViewModel = viewModel(
@@ -111,15 +98,10 @@ fun SetDailyUsageLimitScreen(
 
     var selectedHours by remember { mutableStateOf("0") }
     var selectedMinutes by remember { mutableStateOf("5") }
-    var limitName by remember { mutableStateOf("") }
     var disruptionExpanded by remember { mutableStateOf(false) }
     var selectedDisruptionOption by remember { mutableStateOf("Head Notification") }
     val disruptionOptions = listOf("Head Notification", "Pop Up Notification", "Block Application")
-    var expanded by remember { mutableStateOf(false) }
-    val limitOptions = remember { listOf("Set a Daily Usage Limit", "Block Permanently", "Block on a Schedule") }
-    var selectedLimitOption by remember { mutableStateOf(limitOptions[0]) }
-    val selectedApps by remember { mutableStateOf(viewModel.getSelectedItems()) }
-    var showAppsDialog by remember { mutableStateOf(false) }
+    val selectedApps by remember { mutableStateOf(selectAppsViewModel.getSelectedItems()) }
 
     // Time options lists
     val hoursOptions = remember { (0..23).map { "$it hrs" } }
@@ -127,7 +109,7 @@ fun SetDailyUsageLimitScreen(
 
     // Update selected notification type in ViewModel
     LaunchedEffect(selectedDisruptionOption) {
-        viewModel.updateSelectedNotificationType(selectedDisruptionOption)
+        selectAppsViewModel.updateSelectedNotificationType(selectedDisruptionOption)
     }
 
     Column(
@@ -158,181 +140,6 @@ fun SetDailyUsageLimitScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            // App selection display with improved UI, but without play button icon
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFEAD6FF))
-                    .padding(16.dp)
-                    .clickable(enabled = selectedApps.size > 1) {
-                        if (selectedApps.isEmpty()) {
-                            navController.navigate("select_apps")
-                        } else {
-                            showAppsDialog = true
-                        }
-                    }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // App grid showing actual app icons for the first 4 selected apps
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFE0B0FF))
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxHeight(),
-                                verticalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                // Top-left app icon (first app)
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                ) {
-                                    if (selectedApps.isNotEmpty()) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(selectedApps[0].icon),
-                                            contentDescription = selectedApps[0].name,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color(0xFFD580FF))
-                                        )
-                                    }
-                                }
-
-                                // Bottom-left app icon (second app)
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                ) {
-                                    if (selectedApps.size > 1) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(selectedApps[1].icon),
-                                            contentDescription = selectedApps[1].name,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color(0xFFD580FF))
-                                        )
-                                    }
-                                }
-                            }
-                            Column(
-                                modifier = Modifier.fillMaxHeight(),
-                                verticalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                // Top-right app icon (third app)
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                ) {
-                                    if (selectedApps.size > 2) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(selectedApps[2].icon),
-                                            contentDescription = selectedApps[2].name,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color(0xFFD580FF))
-                                        )
-                                    }
-                                }
-
-                                // Bottom-right app icon (fourth app)
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                ) {
-                                    if (selectedApps.size > 3) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(selectedApps[3].icon),
-                                            contentDescription = selectedApps[3].name,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color(0xFFD580FF))
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Display first app with "& ... other" format when multiple apps are selected
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (selectedApps.isEmpty()) {
-                            ClickableText(
-                                text = AnnotatedString("No apps selected", SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)),
-                                onClick = {
-                                    navController.navigate("select_apps")
-                                }
-                            )
-                        } else if (selectedApps.size == 1) {
-                            // Show just the single app
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(selectedApps[0].icon),
-                                    contentDescription = selectedApps[0].name,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = selectedApps[0].name,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        } else {
-                            // Show first app with "& ... other" text
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(selectedApps[0].icon),
-                                    contentDescription = selectedApps[0].name,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "${selectedApps[0].name} & ... other",
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -341,8 +148,7 @@ fun SetDailyUsageLimitScreen(
                 fontSize = 15.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Header banner replacing the dropdown (similar to Image 2)
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -382,7 +188,7 @@ fun SetDailyUsageLimitScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Scrollable time selection UI with two narrower side-by-side columns
+            // Scrollable time selection
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -405,7 +211,7 @@ fun SetDailyUsageLimitScreen(
                         onValueSelected = { value ->
                             selectedHours = value.split(" ")[0]
                         },
-                        highlightedColor = Color(0xFF4B4BE7) // Blue highlight color from image
+                        highlightedColor = Color(0xFF4B4BE7)
                     )
                 }
 
@@ -430,28 +236,6 @@ fun SetDailyUsageLimitScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "Want to name your limit? (Optional)",
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Limit name input
-            OutlinedTextField(
-                value = limitName,
-                onValueChange = { limitName = it },
-                placeholder = { Text("Limit Name") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = Purple40,
-                    unfocusedBorderColor = Color.LightGray
-                ),
-                singleLine = true
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
@@ -512,7 +296,7 @@ fun SetDailyUsageLimitScreen(
                             onClick = {
                                 selectedDisruptionOption = option
                                 disruptionExpanded = false
-                                viewModel.updateSelectedNotificationType(option)
+                                selectAppsViewModel.updateSelectedNotificationType(option)
                             }
                         )
                     }
@@ -545,7 +329,7 @@ fun SetDailyUsageLimitScreen(
                         try {
                             Log.d("SetaDailyLimit", "Save button clicked")
                             val timeLimitMinutes = (selectedHours.toInt() * 60) + selectedMinutes.toInt()
-                            val selectedAppsInfo = viewModel.getSelectedItems()
+                            val selectedAppsInfo = selectAppsViewModel.getSelectedItems()
 
                             Log.d("SetaDailyLimit", "Selected apps: ${selectedAppsInfo.size}, time limit: $timeLimitMinutes minutes")
 
@@ -563,7 +347,7 @@ fun SetDailyUsageLimitScreen(
                                         R.drawable.app_logo.toString()
                                     }
 
-                                    Log.d("SetaDailyLimit", "Creating entity with notification type: ${viewModel.selectedNotificationType.value}")
+                                    Log.d("SetaDailyLimit", "Creating entity with notification type: ${selectAppsViewModel.selectedNotificationType.value}")
 
                                     SetaDailyLimitEntity(
                                         appName = app.name,
@@ -571,7 +355,7 @@ fun SetDailyUsageLimitScreen(
                                         icon = iconString,
                                         timeLimitMinutes = timeLimitMinutes,
                                         isParental = isParental,
-                                        notificationType = viewModel.selectedNotificationType.value
+                                        notificationType = selectAppsViewModel.selectedNotificationType.value
                                     )
                                 }
 
@@ -660,44 +444,6 @@ fun SetDailyUsageLimitScreen(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
-    }
-
-    // Dialog to show all selected apps when clicked
-    if (showAppsDialog) {
-        AlertDialog(
-            onDismissRequest = { showAppsDialog = false },
-            title = { Text("Selected Apps") },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    selectedApps.forEach { app ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(app.icon),
-                                contentDescription = app.name,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = app.name,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAppsDialog = false }) {
-                    Text("Close")
-                }
-            }
-        )
     }
 }
 
