@@ -1,6 +1,7 @@
 package com.example.undistract.features.add_behavior.presentation
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,6 +87,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
+    Log.d("ADD_RESTRICTION_PARENTAL","Status: $isParental")
 
     val blockPermanentDao = remember { database.blockPermanentDao() }
     val blockSchedulesDao = remember { database.blockSchedulesDao() }

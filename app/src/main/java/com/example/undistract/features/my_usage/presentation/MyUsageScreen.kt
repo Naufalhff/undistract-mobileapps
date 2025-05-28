@@ -1,6 +1,7 @@
 package com.example.undistract.features.my_usage.presentation
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -40,6 +41,10 @@ fun MyUsageScreen(context: Context, navController: NavHostController) {
     val appUsageStats by usageViewModel.appUsageStats.collectAsState()
     val hourlyUsageData by usageViewModel.hourlyUsageData.collectAsState()
     val totalUsage by usageViewModel.totalUsage.collectAsState()
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    val token = prefs.getString("token", "") ?: ""
+    val userId = prefs.getInt("userId", -1)
+    Log.d("AUTH_DEBUG", "User ID: $userId, Token: $token")
 
     // Refresh data when screen appears
     LaunchedEffect(key1 = Unit) {

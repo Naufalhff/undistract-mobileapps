@@ -46,7 +46,7 @@
 
         <!-- Activity Login -->
         <activity
-            android:name=".features.profile.presentation.LoginActivity"
+            android:name=".features.profile.AuthActivity"
             android:exported="true"
             android:label="Login"
             android:theme="@style/Theme.Undistract" />

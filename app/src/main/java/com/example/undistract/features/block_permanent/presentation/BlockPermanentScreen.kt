@@ -108,12 +108,21 @@ fun BlockPermanentScreen(
                             val blockPermanentEntity = BlockPermanentEntity(
                                 packageName = item.identifier,
                                 appName = restrictionName.ifEmpty { item.name },
-                                isActive = true
+                                isActive = true,
+                                isParental = isParental
                             )
                             viewModel.insertBlockPermanent(blockPermanentEntity)
                             Log.d("BlockPermanentScreen", "Data saved: ${blockPermanentEntity.packageName}, ${blockPermanentEntity.appName}")
                         }
-                        navController.navigate(BottomNavItem.UsageLimit.route)
+                        if (isParental){
+                            navController.navigate("parental_usage_limit?isParental=true"){
+                                launchSingleTop = true
+                            }
+                        } else {
+                            navController.navigate(BottomNavItem.UsageLimit.route){
+                                launchSingleTop = true
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e("BlockPermanentScreen", "Error saving data: ${e.message}", e)
                     }

@@ -5,15 +5,14 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SetaDailyLimitDao {
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(setaDailyLimitEntity: SetaDailyLimitEntity): Long
-
-    @Query("SELECT * FROM daily_limits_table")
-    fun getAll(): List<SetaDailyLimitEntity>
 
     @Query("SELECT * FROM daily_limits_table WHERE isParental = :isParental")
     fun getAll(isParental: Boolean): Flow<List<SetaDailyLimitEntity>>
@@ -41,4 +40,18 @@ interface SetaDailyLimitDao {
 
     @Query("SELECT * FROM daily_limits_table WHERE id = :id")
     suspend fun getById(id: Int): SetaDailyLimitEntity?
+
+
+    // Query sync remote
+    @Query("SELECT * FROM daily_limits_table")
+    fun getAll(): List<SetaDailyLimitEntity>
+
+    @Query("DELETE FROM daily_limits_table WHERE isSynced = 1")
+    suspend fun clearAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<SetaDailyLimitEntity>)
+
+    @Query("UPDATE daily_limits_table SET isSynced = 1 WHERE isSynced = 0")
+    suspend fun markAllAsSynced()
 }

@@ -14,8 +14,8 @@ import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimit
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionDao
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
-import com.example.undistract.features.authentication.data.local.PinEntity
-import com.example.undistract.features.authentication.data.local.PinDao
+import com.example.undistract.features.authentication_parental.data.local.PinEntity
+import com.example.undistract.features.authentication_parental.data.local.PinDao
 
 @Database(
     entities = [

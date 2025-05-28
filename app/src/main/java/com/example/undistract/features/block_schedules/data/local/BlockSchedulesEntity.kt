@@ -15,5 +15,6 @@ data class BlockSchedulesEntity(
     val startTime: String?,
     val endTime: String?,
     val isActive: Boolean,
-    val isParental: Boolean = false
+    val isParental: Boolean = false,
+    val isSynced: Boolean = false
 )

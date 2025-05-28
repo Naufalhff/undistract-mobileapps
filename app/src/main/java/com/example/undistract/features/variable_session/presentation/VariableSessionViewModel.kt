@@ -32,7 +32,8 @@ class VariableSessionViewModel(
         coolDownDuration: Long?,
         coolDownEndTime: Long?,
         isOnCooldown: Boolean,
-        isActive: Boolean
+        isActive: Boolean,
+        isParental: Boolean
     ) {
         viewModelScope.launch {
             repository.addVariableSessionForMultipleApps(

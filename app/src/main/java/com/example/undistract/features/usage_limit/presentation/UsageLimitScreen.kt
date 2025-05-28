@@ -32,6 +32,7 @@ import com.example.undistract.ui.theme.Purple40
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import android.graphics.drawable.Drawable
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -45,6 +46,7 @@ import com.example.undistract.features.usage_stats.UsageStatsManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.core.ApiBackendClient
 import com.example.undistract.core.ApiService
@@ -71,6 +73,7 @@ fun UsageLimitScreen(
     isParental: Boolean = false
 ) {
     val sharedViewModel: SharedViewModel = viewModel()
+    Log.d("USAGE_LIMIT_PARENTAL", "Status: $isParental")
     // Get the UsageLimitViewModel
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
         factory = UsageLimitViewModelFactory(
@@ -90,12 +93,20 @@ fun UsageLimitScreen(
         )
     )
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Log current route
+    Log.d("Navigation", "Current Route: $currentRoute")
+
     val syncRepository = SyncRepository(
         AppDatabase.getDatabase(context).blockSchedulesDao(),
         AppDatabase.getDatabase(context).variableSessionDao(),
         AppDatabase.getDatabase(context).blockPermanentDao(),
         AppDatabase.getDatabase(context).setaDailyLimitDao(),
-        ApiBackendClient.apiService
+        AppDatabase.getDatabase(context).pinDao(),
+        ApiBackendClient.apiService,
+        context
     )
     val syncViewModel = SyncViewModel(syncRepository)
 
@@ -224,7 +235,18 @@ fun UsageLimitScreen(
                 },
                 actions = {
                     Button(
-                        onClick = { syncViewModel.syncAllData(context) },
+                        onClick = {
+                            val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                            val token = prefs.getString("token", "") ?: ""
+                            val userId = prefs.getInt("userId", -1)
+                            Log.d("AUTH_DEBUG", "User ID: $userId, Token: $token")
+
+                            if (!token.isNullOrEmpty() && userId != -1) {
+                                syncViewModel.syncAllData(context)
+                            } else {
+                                Toast.makeText(context, "Anda harus login untuk sync data", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         modifier = Modifier
                             .padding(top = 4.dp)
                             .height(36.dp)
@@ -301,7 +323,8 @@ fun UsageLimitScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Purple40,
                             contentColor = Color.White
-                        )
+                        ),
+                        shape = RoundedCornerShape(8.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,

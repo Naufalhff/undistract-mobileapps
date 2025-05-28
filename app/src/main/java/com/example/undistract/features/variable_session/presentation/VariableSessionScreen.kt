@@ -63,6 +63,7 @@ import com.example.undistract.features.select_apps.presentation.SelectAppsViewMo
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.ui.components.BackButton
+import com.example.undistract.ui.navigation.BottomNavItem
 import com.example.undistract.ui.theme.ColorNew
 import kotlinx.coroutines.launch
 
@@ -289,9 +290,18 @@ fun VariableSessionScreen(
                                         coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
                                         coolDownEndTime = null,
                                         isOnCooldown = false,
-                                        isActive = true
+                                        isActive = true,
+                                        isParental = isParental
                                     )
-                                    navController.navigate("parental_usage_limit?isParental=$isParental")
+                                    if (isParental){
+                                        navController.navigate("parental_usage_limit?isParental=true"){
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        navController.navigate(BottomNavItem.UsageLimit.route){
+                                            launchSingleTop = true
+                                        }
+                                    }
                                     Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
