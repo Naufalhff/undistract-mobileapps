@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -12,9 +11,6 @@ interface BlockPermanentDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBlockPermanent(data: BlockPermanentEntity)
-
-    @Query("SELECT * FROM block_permanent_table WHERE packageName = :packageName")
-    suspend fun getBlockPermanent(packageName: String): List<BlockPermanentEntity>
 
     @Query("DELETE FROM block_permanent_table WHERE id = :id")
     suspend fun deleteBlockPermanent(id: Int)
@@ -30,7 +26,6 @@ interface BlockPermanentDao {
 
     @Query("SELECT * FROM block_permanent_table WHERE isParental = :isParental")
     fun getBlockPermanentByParentalFlag(isParental: Boolean): Flow<List<BlockPermanentEntity>>
-
 
     // Query sync remote
     @Query("SELECT * FROM block_permanent_table")

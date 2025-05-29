@@ -6,16 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 class BlockPermanentViewModel (
     private val repository: BlockPermanentRepository,
-    private val isParental: Boolean
 ) : ViewModel() {
 
-    fun insertBlockPermanent(data: BlockPermanentEntity) {
+    private fun insertBlockPermanent(data: BlockPermanentEntity) {
         viewModelScope.launch {
             repository.insertBlockPermanent(data)
         }

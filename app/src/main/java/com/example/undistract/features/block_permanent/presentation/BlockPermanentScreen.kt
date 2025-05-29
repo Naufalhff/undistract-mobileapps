@@ -13,19 +13,13 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
-import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import com.example.undistract.R
 
 @Composable
 fun BlockPermanentScreen() {
@@ -51,7 +45,7 @@ fun BlockPermanentScreen() {
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "Aplikasi yang diblokir permanen tidak bisa dibuka sama sekali hingga Anda menonaktifkannya.",
+                text = stringResource(id = R.string.blocked_app_message),
                 color = Color.Red,
                 fontSize = 14.sp
             )

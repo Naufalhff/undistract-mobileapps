@@ -22,9 +22,9 @@ object ViewModelFactoryProvider {
         return AddLimitViewModelFactory()
     }
 
-    fun provideBlockPermanentViewModelFactory(context: Context, isParental: Boolean): ViewModelProvider.Factory {
+    fun provideBlockPermanentViewModelFactory(context: Context): ViewModelProvider.Factory {
         val blockPermanentRepo = AppDependenciesProvider.provideBlockPermanentRepository(context)
-        return BlockPermanentViewModelFactory(blockPermanentRepo, isParental)
+        return BlockPermanentViewModelFactory(blockPermanentRepo)
     }
 
     fun provideBlockSchedulesViewModelFactory(context: Context, isParental: Boolean): ViewModelProvider.Factory {

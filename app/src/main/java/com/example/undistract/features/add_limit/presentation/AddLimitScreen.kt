@@ -92,7 +92,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     )
 
     val blockPermanentViewModel: BlockPermanentViewModel = viewModel(
-        factory = ViewModelFactoryProvider.provideBlockPermanentViewModelFactory(context, isParental)
+        factory = ViewModelFactoryProvider.provideBlockPermanentViewModelFactory(context)
     )
 
     val blockSchedulesViewModel: BlockSchedulesViewModel = viewModel(

@@ -6,8 +6,7 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.os.Handler
 import android.os.Looper
 
-class BlockPermanentManager ()
-{
+class BlockPermanentManager {
     fun blockApp (service: AccessibilityService) {
         service.performGlobalAction(GLOBAL_ACTION_BACK)
         Handler(Looper.getMainLooper()).postDelayed({

@@ -10,10 +10,6 @@ class BlockPermanentRepository (private val dao: BlockPermanentDao) {
         dao.insertBlockPermanent(data)
     }
 
-    suspend fun deleteBlockPermanent(id: Int) {
-        dao.deleteBlockPermanent(id)
-    }
-
     suspend fun updateIsActive(id: Int, isActive: Boolean) {
         dao.updateIsActive(id, isActive)
     }
