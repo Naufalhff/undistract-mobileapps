@@ -15,15 +15,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -38,14 +45,22 @@ import com.example.undistract.ui.components.BackButton
 fun SelectAppsScreen(
     navController: NavHostController,
 ) {
-    // Mendapatkan ViewModel dengan parentEntry untuk navigasi
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
     val viewModel: SelectAppsViewModel = viewModel(parentEntry)
 
-    // Mendapatkan daftar item yang digabungkan (Aplikasi dan URL)
     val combinedItems by viewModel.combinedItems.collectAsState()
+
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredItems = if (searchQuery.isBlank()) {
+        combinedItems
+    } else {
+        combinedItems.filter {
+            it.name.contains(searchQuery, ignoreCase = true)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -74,6 +89,29 @@ fun SelectAppsScreen(
             )
         }
 
+        // SEARCH BAR
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("Search apps") },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Icon"
+                )
+            },
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // SELECT ALL TOGGLE
         val isSelectAll by viewModel.isSelectAll.collectAsState()
 
@@ -96,7 +134,7 @@ fun SelectAppsScreen(
             Checkbox(
                 checked = isSelectAll,
                 onCheckedChange = {
-                    viewModel.toggleSelectAll(combinedItems.map { it.identifier })
+                    viewModel.toggleSelectAll(filteredItems.map { it.identifier })
                 },
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
@@ -107,7 +145,7 @@ fun SelectAppsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // LIST OF INSTALLED APPLICATION OR URL (Gabungan)
+        // LIST OF FILTERED ITEMS
         val selectedAppsMap = viewModel.selectedApps
 
         LazyColumn(
@@ -117,23 +155,18 @@ fun SelectAppsScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(
-                items = combinedItems,
+                items = filteredItems,
                 key = { item -> item.identifier }
             ) { item ->
                 val isChecked = selectedAppsMap[item.identifier] ?: false
 
-                when (item) {
-                    is AppOrUrlItem.AppItem,
-                    is AppOrUrlItem.UrlItem -> {
-                        ListItem(
-                            item = item,
-                            isChecked = isChecked,
-                            onCheckedChange = { checked ->
-                                viewModel.toggleAppSelection(item.identifier, checked)
-                            }
-                        )
+                ListItem(
+                    item = item,
+                    isChecked = isChecked,
+                    onCheckedChange = { checked ->
+                        viewModel.toggleAppSelection(item.identifier, checked)
                     }
-                }
+                )
             }
         }
     }
