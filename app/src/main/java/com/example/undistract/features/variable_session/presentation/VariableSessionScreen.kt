@@ -58,6 +58,8 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.undistract.R
+import com.example.undistract.features.add_limit.data.local.VariableSessionData
+import com.example.undistract.features.add_limit.presentation.AddLimitViewModel
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
@@ -72,6 +74,7 @@ fun VariableSessionScreen(
     navController: NavController,
     repository: VariableSessionRepository,
     selectAppViewModel: SelectAppsViewModel,
+    sharedViewModel: AddLimitViewModel,
     isParental: Boolean
 ) {
     val context = LocalContext.current
@@ -173,27 +176,6 @@ fun VariableSessionScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BackButton (
-                modifier = Modifier.size(24.dp),
-                onClick = { navController.popBackStack()}
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Text(
-                text = "Custom session restriction",
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -247,74 +229,17 @@ fun VariableSessionScreen(
             }
         }
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val coroutineScope = rememberCoroutineScope()
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = ColorNew.primary
-                    ),
-                    onClick = {
-                        navController.popBackStack()
-                    }
-                ) {
-                    Text("Cancel")
-                }
-
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ColorNew.primary,
-                        contentColor = Color.White
-                    ),
-                    onClick = {
-                        coroutineScope.launch {
-                            try {
-                                if (selectedApps.isEmpty()) {
-                                    Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    val appsToSave = listApps.map { app -> app.name to app.identifier }
-                                    viewModel.addVariableSession(
-                                        apps = appsToSave,
-                                        secondsLeft = 0,
-                                        coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
-                                        coolDownEndTime = null,
-                                        isOnCooldown = false,
-                                        isActive = true,
-                                        isParental = isParental
-                                    )
-                                    if (isParental){
-                                        navController.navigate("parental_usage_limit?isParental=true"){
-                                            launchSingleTop = true
-                                        }
-                                    } else {
-                                        navController.navigate(BottomNavItem.UsageLimit.route){
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                    Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                                Log.e("SAVE_ERROR", "Failed to save variable session", e)
-                                navController.navigate("parental_usage_limit?isParental=$isParental")
-                            }
-                        }
-                    }
-                ) {
-                    Text("Save")
-                }
-            }
+        LaunchedEffect(coolDownMinutes, coolDownHours, isParental) {
+            sharedViewModel.updateSessionData(
+                VariableSessionData(
+                    secondsLeft = 0,
+                    coolDownDuration = calculate(coolDownMinutes, coolDownHours).toLong(),
+                    coolDownEndTime = null,
+                    isOnCooldown = false,
+                    isActive = true,
+                    isParental = isParental
+                )
+            )
         }
     }
 }

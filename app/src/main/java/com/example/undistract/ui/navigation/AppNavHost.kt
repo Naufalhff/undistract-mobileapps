@@ -218,7 +218,8 @@ fun AppNavHost(context: Context) {
                         navController = navController,
                         repository = variableSessionRepository,
                         selectAppViewModel = selectAppsViewModel,
-                        isParental = isParental
+                        isParental = isParental,
+                        sharedViewModel = addLimitViewModel
                     )
                 }
                 composable(

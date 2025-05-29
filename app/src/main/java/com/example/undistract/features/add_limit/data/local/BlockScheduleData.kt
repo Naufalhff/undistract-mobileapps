@@ -1,8 +1,6 @@
 package com.example.undistract.features.add_limit.data.local
 
-import androidx.compose.runtime.MutableState
-
-data class ScheduleData(
+data class BlockScheduleData(
     val daysOfWeek: String,
     val isAllDay: Boolean,
     val startTime: String?,

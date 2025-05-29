@@ -168,126 +168,98 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                 )
             }
 
-            // SECTION 3: MAIN QUESTION
-            if (currentMainSection == "base") {
-                Text(
-                    text = stringResource(R.string.choose_what_restriction),
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // SECTION 4: MAIN SECTION
-            when (currentMainSection) {
-                "base" -> BaseSection(onSectionChange = { currentMainSection = it })
-                "block_permanent" -> selectAppsViewModel?.let {
-                    BlockPermanentScreen(
-                        navController = navController,
-                        selectAppsViewModel = it,
-                        repository = blockPermanentRepository,
-                        isParental = isParental
+            if (selectedAppsWithInfo.isNotEmpty()) {
+                // SECTION 3: MAIN QUESTION
+                if (currentMainSection == "base") {
+                    Text(
+                        text = stringResource(R.string.choose_what_restriction),
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                "block_schedule" -> selectAppsViewModel?.let {
-                    BlockSchedulesScreen(
-                        navController = navController,
-                        selectAppViewModel = it,
-                        repository = blockSchedulesRepository,
-                        isParental = isParental,
-                        sharedViewModel = addLimitViewModel
-                    )
-                }
+
+                // SECTION 4: MAIN SECTION
+                when (currentMainSection) {
+                    "base" -> BaseSection(onSectionChange = { currentMainSection = it })
+                    "block_permanent" -> selectAppsViewModel?.let {
+                        BlockPermanentScreen(
+                            navController = navController,
+                            selectAppsViewModel = it,
+                            repository = blockPermanentRepository,
+                            isParental = isParental
+                        )
+                    }
+                    "block_schedule" -> selectAppsViewModel?.let {
+                        BlockSchedulesScreen(
+                            navController = navController,
+                            selectAppViewModel = it,
+                            repository = blockSchedulesRepository,
+                            isParental = isParental,
+                            sharedViewModel = addLimitViewModel
+                        )
+                    }
 //                "daily_limit" -> SetDailyUsageLimitScreen()
-                "session_limit" -> selectAppsViewModel?.let {
-                    VariableSessionScreen(
-                        navController = navController,
-                        selectAppViewModel = it,
-                        repository = variableSessionRepository,
-                        isParental = isParental
-                    )
+                    "session_limit" -> selectAppsViewModel?.let {
+                        VariableSessionScreen(
+                            navController = navController,
+                            selectAppViewModel = it,
+                            repository = variableSessionRepository,
+                            isParental = isParental,
+                            sharedViewModel = addLimitViewModel
+                        )
+                    }
                 }
             }
         }
 
-        // SECTION 5: CANCEL AND SAVE BUTTON
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = ColorNew.primary
-                ),
-                onClick = {
-                    navController.navigate(BottomNavItem.UsageLimit.route)
-                }
+        if (selectedAppsWithInfo.isNotEmpty()) {
+            // SECTION 5: CANCEL AND SAVE BUTTON
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "Cancel")
-            }
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = ColorNew.primary
+                    ),
+                    onClick = {
+                        navController.navigate(BottomNavItem.UsageLimit.route)
+                    }
+                ) {
+                    Text(text = "Cancel")
+                }
 
-            Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-            val buttonColor = if (currentMainSection != "base" && selectedAppsWithInfo.isNotEmpty())
-            {
-                ColorNew.primary
-            } else  {
-                Color.Gray
-            }
+                val buttonColor = if (currentMainSection != "base" && selectedAppsWithInfo.isNotEmpty())
+                {
+                    ColorNew.primary
+                } else  {
+                    Color.Gray
+                }
 
-            Button(
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonColor,
-                    contentColor = Color.White
-                ),
-                onClick = {
-                    when (currentMainSection) {
-                        "block_permanent" -> {
-                            if (selectedAppsWithInfo.isNotEmpty())
-                            {
-                                blockPermanentViewModel.saveBlockedApps(
-                                    selectedApps = selectedAppsWithInfo,
-                                    isParental = isParental,
-                                    onSuccess = {
-                                        if (isParental) {
-                                            navController.navigate("parental_usage_limit?isParental=true") {
-                                                launchSingleTop = true
-                                            }
-                                        } else {
-                                            navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                launchSingleTop = true
-                                            }
-                                        }
-                                        Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                    },
-                                    onError = { e ->
-                                        // Tangani error
-                                        Log.e("BlockPermanent", "Failed to save", e)
-                                    }
-                                )
-                            }
-                        }
-
-                        "block_schedule" -> {
-                            if (selectedAppsWithInfo.isNotEmpty()) {
-                                val data = addLimitViewModel.scheduleData.value
-                                data?.let { scheduleData ->
-                                    blockSchedulesViewModel.saveBlockSchedule(
-                                        apps = selectedAppsPairs,
-                                        daysOfWeek = scheduleData.daysOfWeek,
-                                        isAllDay = scheduleData.isAllDay,
-                                        startTime = scheduleData.startTime,
-                                        endTime = scheduleData.endTime,
-                                        isActive = scheduleData.isActive,
-                                        isParental = scheduleData.isParental,
+                Button(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = buttonColor,
+                        contentColor = Color.White
+                    ),
+                    onClick = {
+                        when (currentMainSection) {
+                            "block_permanent" -> {
+                                if (selectedAppsWithInfo.isNotEmpty())
+                                {
+                                    blockPermanentViewModel.saveBlockedApps(
+                                        selectedApps = selectedAppsWithInfo,
+                                        isParental = isParental,
                                         onSuccess = {
-                                            if (scheduleData.isParental) {
+                                            if (isParental) {
                                                 navController.navigate("parental_usage_limit?isParental=true") {
                                                     launchSingleTop = true
                                                 }
@@ -299,21 +271,97 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                                             Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                         },
                                         onError = { e ->
-                                            Log.e("BlockSchedule", "Failed to save", e)
+                                            // Tangani error
+                                            Log.e("BlockPermanent", "Failed to save", e)
                                         }
                                     )
                                 }
                             }
-                        }
 
-                        else -> {
-                            // No action
+                            "block_schedule" -> {
+                                if (selectedAppsWithInfo.isNotEmpty()) {
+                                    when {
+                                        addLimitViewModel.scheduleData.value == null -> {
+                                            Toast.makeText(context, "Schedule data is incomplete", Toast.LENGTH_SHORT).show()
+                                        }
+                                        addLimitViewModel.scheduleData.value?.daysOfWeek
+                                            ?.removePrefix("[")?.removeSuffix("]")
+                                            ?.split(",")?.map { it.trim().toBoolean() }
+                                            ?.all { !it } == true -> {
+                                            Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
+                                        }
+                                        addLimitViewModel.scheduleData.value != null && !addLimitViewModel.scheduleData.value!!.isAllDay &&
+                                                addLimitViewModel.scheduleData.value!!.startTime == addLimitViewModel.scheduleData.value!!.endTime -> {
+                                            Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
+                                        }
+                                        else -> {
+                                            val data = addLimitViewModel.scheduleData.value!!
+                                            blockSchedulesViewModel.saveBlockSchedule(
+                                                apps = selectedAppsPairs,
+                                                daysOfWeek = data.daysOfWeek,
+                                                isAllDay = data.isAllDay,
+                                                startTime = data.startTime,
+                                                endTime = data.endTime,
+                                                isActive = data.isActive,
+                                                isParental = data.isParental,
+                                                onSuccess = {
+                                                    if (data.isParental) {
+                                                        navController.navigate("parental_usage_limit?isParental=true") {
+                                                            launchSingleTop = true
+                                                        }
+                                                    } else {
+                                                        navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                            launchSingleTop = true
+                                                        }
+                                                    }
+                                                    Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { e ->
+                                                    Log.e("BlockSchedule", "Failed to save", e)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            "session_limit" -> {
+                                if (selectedAppsWithInfo.isNotEmpty()) {
+                                    val data = addLimitViewModel.sessionData.value
+                                    data?.let { sessionData ->
+                                        variableSessionViewModel.saveVariableSession(
+                                            apps = selectedAppsPairs,
+                                            secondsLeft = sessionData.secondsLeft,
+                                            coolDownDuration = sessionData.coolDownDuration,
+                                            coolDownEndTime = sessionData.coolDownEndTime,
+                                            isOnCooldown = sessionData.isOnCooldown,
+                                            isActive = sessionData.isActive,
+                                            isParental = sessionData.isParental,
+                                            onSuccess = {
+                                                if (sessionData.isParental) {
+                                                    navController.navigate("parental_usage_limit?isParental=true") {
+                                                        launchSingleTop = true
+                                                    }
+                                                } else {
+                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                                Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { e ->
+                                                Log.e("BlockSchedule", "Failed to save", e)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
-                }
 
-            ) {
-                Text(text = "Save")
+                ) {
+                    Text(text = "Save")
+                }
             }
         }
     }

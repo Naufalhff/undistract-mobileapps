@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.add_limit.data.local.ScheduleData
+import com.example.undistract.features.add_limit.data.local.BlockScheduleData
 import com.example.undistract.features.add_limit.presentation.AddLimitViewModel
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
@@ -102,27 +102,6 @@ fun BlockSchedulesScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BackButton (
-                modifier = Modifier.size(24.dp),
-                onClick = { navController.popBackStack()}
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Text(
-                text = "Block on Schedules",
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -245,7 +224,7 @@ fun BlockSchedulesScreen(
 
         LaunchedEffect(selectedDays, isAllDay, startTime, endTime, isParental) {
             sharedViewModel.updateScheduleData(
-                ScheduleData(
+                BlockScheduleData(
                     daysOfWeek = selectedDays.value.toList().toString(),
                     isAllDay = isAllDay,
                     startTime = startTime.toString(),

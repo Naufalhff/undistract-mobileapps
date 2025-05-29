@@ -1,12 +1,15 @@
 package com.example.undistract.features.variable_session.presentation
 
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.data.local.VariableSessionEntity
+import com.example.undistract.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +48,35 @@ class VariableSessionViewModel(
                 isActive,
                 isParental = isParental
             )
+        }
+    }
+
+    fun saveVariableSession(
+        apps: List<Pair<String, String>>,
+        secondsLeft: Int,
+        coolDownDuration: Long?,
+        coolDownEndTime: Long?,
+        isOnCooldown: Boolean,
+        isActive: Boolean,
+        isParental: Boolean,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                addVariableSession(
+                    apps = apps,
+                    secondsLeft = secondsLeft,
+                    coolDownDuration = coolDownDuration,
+                    coolDownEndTime = coolDownEndTime,
+                    isOnCooldown = isOnCooldown,
+                    isActive = isActive,
+                    isParental = isParental
+                )
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e)
+            }
         }
     }
 
