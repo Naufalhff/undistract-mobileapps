@@ -16,7 +16,7 @@ class BlockSchedulesViewModel(
     val blockedSchedules: LiveData<List<BlockSchedulesEntity>> =
         repository.getAllBlockSchedules(isParental).asLiveData()
 
-    fun addBlockSchedules(
+    private fun addBlockSchedules(
         apps: List<Pair<String, String>>,
         daysOfWeek: String,
         isAllDay: Boolean,
@@ -30,6 +30,35 @@ class BlockSchedulesViewModel(
                 apps, daysOfWeek, isAllDay, startTime, endTime, isActive,
                 isParental = isParental
             )
+        }
+    }
+
+    fun saveBlockSchedule(
+        apps: List<Pair<String, String>>,
+        daysOfWeek: String,
+        isAllDay: Boolean,
+        startTime: String?,
+        endTime: String?,
+        isActive: Boolean,
+        isParental: Boolean,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                addBlockSchedules(
+                    apps = apps,
+                    daysOfWeek = daysOfWeek,
+                    isAllDay = isAllDay,
+                    startTime = startTime,
+                    endTime = endTime,
+                    isActive = isActive,
+                    isParental = isParental
+                )
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e)
+            }
         }
     }
 

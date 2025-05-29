@@ -1,7 +1,9 @@
-package com.example.undistract.features.add_behavior.presentation
+package com.example.undistract.features.add_limit.presentation
 
 import android.annotation.SuppressLint
 import android.util.Log
+import android.widget.Toast
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,13 +24,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,8 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -76,6 +75,7 @@ import com.example.undistract.features.variable_session.presentation.VariableSes
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.navigation.BottomNavItem
+import com.example.undistract.ui.theme.ColorNew
 
 @SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
@@ -83,7 +83,6 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     val context = LocalContext.current
     val database = AppDatabase.getDatabase(context)
     var currentMainSection by remember { mutableStateOf("base") }
-    var restrictionName by remember { mutableStateOf("") }
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
@@ -108,6 +107,9 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
         } else null
     }.getOrNull()
 
+    val addLimitViewModel: AddLimitViewModel = viewModel(
+        factory = AddLimitViewModelFactory()
+    )
 
     val blockPermanentViewModel: BlockPermanentViewModel = viewModel(
         factory = BlockPermanentViewModelFactory(blockPermanentRepository, isParental)
@@ -121,12 +123,27 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
         factory = VariableSessionViewModelFactory(variableSessionRepository, isParental)
     )
 
-    Column (
+    val selectedPackageNames = selectAppsViewModel?.getSelectedIdentifiers()
+
+    val combinedItems = selectAppsViewModel?.combinedItems?.collectAsState()?.value.orEmpty()
+
+    var selectedAppsWithInfo by remember { mutableStateOf<List<AppOrUrlItem>>(emptyList()) }
+
+    LaunchedEffect(selectedPackageNames, combinedItems) {
+        if (selectedPackageNames != null) {
+            selectedAppsWithInfo = combinedItems.filter { item ->
+                selectedPackageNames.contains(item.identifier)
+            }
+        }
+    }
+
+    val selectedAppsPairs = selectedAppsWithInfo.map { it.name to it.identifier }
+
+    Box (
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-
         // SECTION 1: BACK BUTTON
         BackButtonSection(
             navController, currentMainSection, onSectionChange = { currentMainSection = it }
@@ -137,6 +154,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
         Column (
             modifier = Modifier
                 .fillMaxSize()
+                .padding(top = 56.dp, bottom = 80.dp)
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -150,13 +168,8 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                 )
             }
 
-            // SECTION 3: RESTRICTION NAME INPUT OR MAIN QUESTION
-            if (currentMainSection != "base") {
-                RestrictionNameInput(
-                    restrictionName = restrictionName,
-                    onRestrictionNameChange = { restrictionName = it }
-                )
-            } else {
+            // SECTION 3: MAIN QUESTION
+            if (currentMainSection == "base") {
                 Text(
                     text = stringResource(R.string.choose_what_restriction),
                     fontSize = 15.sp,
@@ -182,7 +195,8 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                         navController = navController,
                         selectAppViewModel = it,
                         repository = blockSchedulesRepository,
-                        isParental = isParental
+                        isParental = isParental,
+                        sharedViewModel = addLimitViewModel
                     )
                 }
 //                "daily_limit" -> SetDailyUsageLimitScreen()
@@ -194,6 +208,112 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                         isParental = isParental
                     )
                 }
+            }
+        }
+
+        // SECTION 5: CANCEL AND SAVE BUTTON
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = ColorNew.primary
+                ),
+                onClick = {
+                    navController.navigate(BottomNavItem.UsageLimit.route)
+                }
+            ) {
+                Text(text = "Cancel")
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            val buttonColor = if (currentMainSection != "base" && selectedAppsWithInfo.isNotEmpty())
+            {
+                ColorNew.primary
+            } else  {
+                Color.Gray
+            }
+
+            Button(
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonColor,
+                    contentColor = Color.White
+                ),
+                onClick = {
+                    when (currentMainSection) {
+                        "block_permanent" -> {
+                            if (selectedAppsWithInfo.isNotEmpty())
+                            {
+                                blockPermanentViewModel.saveBlockedApps(
+                                    selectedApps = selectedAppsWithInfo,
+                                    isParental = isParental,
+                                    onSuccess = {
+                                        if (isParental) {
+                                            navController.navigate("parental_usage_limit?isParental=true") {
+                                                launchSingleTop = true
+                                            }
+                                        } else {
+                                            navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                        Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { e ->
+                                        // Tangani error
+                                        Log.e("BlockPermanent", "Failed to save", e)
+                                    }
+                                )
+                            }
+                        }
+
+                        "block_schedule" -> {
+                            if (selectedAppsWithInfo.isNotEmpty()) {
+                                val data = addLimitViewModel.scheduleData.value
+                                data?.let { scheduleData ->
+                                    blockSchedulesViewModel.saveBlockSchedule(
+                                        apps = selectedAppsPairs,
+                                        daysOfWeek = scheduleData.daysOfWeek,
+                                        isAllDay = scheduleData.isAllDay,
+                                        startTime = scheduleData.startTime,
+                                        endTime = scheduleData.endTime,
+                                        isActive = scheduleData.isActive,
+                                        isParental = scheduleData.isParental,
+                                        onSuccess = {
+                                            if (scheduleData.isParental) {
+                                                navController.navigate("parental_usage_limit?isParental=true") {
+                                                    launchSingleTop = true
+                                                }
+                                            } else {
+                                                navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                    launchSingleTop = true
+                                                }
+                                            }
+                                            Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { e ->
+                                            Log.e("BlockSchedule", "Failed to save", e)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            // No action
+                        }
+                    }
+                }
+
+            ) {
+                Text(text = "Save")
             }
         }
     }
@@ -275,41 +395,43 @@ fun AppSelectorSection(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // App grid showing actual app icons for the first 4 selected apps
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0B0FF))
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                if (selectedApps.isNotEmpty()) {
+                    // App grid showing actual app icons for the first 4 selected apps
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFE0B0FF))
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxHeight(),
-                            verticalArrangement = Arrangement.SpaceEvenly
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            // Top-left app icon (first app)
-                            AppIconPreview(app = selectedApps.getOrNull(0))
+                            Column(
+                                modifier = Modifier.fillMaxHeight(),
+                                verticalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                // Top-left app icon (first app)
+                                AppIconPreview(app = selectedApps.getOrNull(0))
 
-                            // Bottom-left app icon (second app)
-                            AppIconPreview(app = selectedApps.getOrNull(1))
-                        }
-                        Column(
-                            modifier = Modifier.fillMaxHeight(),
-                            verticalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            // Top-right app icon (third app)
-                            AppIconPreview(app = selectedApps.getOrNull(2))
+                                // Bottom-left app icon (second app)
+                                AppIconPreview(app = selectedApps.getOrNull(1))
+                            }
+                            Column(
+                                modifier = Modifier.fillMaxHeight(),
+                                verticalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                // Top-right app icon (third app)
+                                AppIconPreview(app = selectedApps.getOrNull(2))
 
-                            // Bottom-right app icon (fourth app)
-                            AppIconPreview(app = selectedApps.getOrNull(3))
+                                // Bottom-right app icon (fourth app)
+                                AppIconPreview(app = selectedApps.getOrNull(3))
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
 
                 // Display first app with "& ... other" format when multiple apps are selected
                 Column(
@@ -318,7 +440,7 @@ fun AppSelectorSection(
                     if (selectedApps.isEmpty()) {
                         ClickableText(
                             text = AnnotatedString(
-                                "No apps selected",
+                                "Select Apps",
                                 SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             ),
                             onClick = {
@@ -403,13 +525,13 @@ fun BaseSection(onSectionChange: (String) -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             FlexboxItem(
-                icon = Icons.Default.Star,
+                iconResId = R.drawable.block_permanent_icon,
                 label = stringResource(R.string.block_permanently),
                 onClick = { onSectionChange("block_permanent") }
             )
 
             FlexboxItem(
-                icon = Icons.Default.Star,
+                iconResId = R.drawable.block_schedule_icon,
                 label = stringResource(R.string.block_on_a_schedule),
                 onClick = { onSectionChange("block_schedule") }
             )
@@ -423,13 +545,13 @@ fun BaseSection(onSectionChange: (String) -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             FlexboxItem(
-                icon = Icons.Default.Star,
+                iconResId = R.drawable.daily_usage_icon,
                 label = stringResource(R.string.restrict_daily_usage),
                 onClick = { onSectionChange("daily_limit") }
             )
 
             FlexboxItem(
-                icon = Icons.Default.Star,
+                iconResId = R.drawable.custom_restriction_icon,
                 label = stringResource(R.string.apply_custom_session_restriction),
                 onClick = { onSectionChange("session_limit") }
             )
@@ -439,11 +561,13 @@ fun BaseSection(onSectionChange: (String) -> Unit) {
 
 @Composable
 fun FlexboxItem(
-    icon: ImageVector,
+    @DrawableRes iconResId: Int,
     label: String,
     isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
+    val painter = painterResource(id = iconResId)
+
     Box(
         modifier = Modifier
             .size(145.dp)
@@ -464,10 +588,11 @@ fun FlexboxItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+            Image(
+                painter = painter,
+                contentDescription = label,
+                modifier = Modifier.size(48.dp),
+                colorFilter = ColorFilter.tint(ColorNew.primary)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -479,38 +604,5 @@ fun FlexboxItem(
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Composable
-fun RestrictionNameInput(
-    restrictionName: String,
-    onRestrictionNameChange: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .padding(start = 21.dp, end = 21.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Text(
-                text = stringResource(R.string.name_your_restriction),
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = restrictionName,
-            onValueChange = onRestrictionNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(text = "Restriction Name") },
-            shape = RoundedCornerShape(8.dp),
-            singleLine = true
-        )
     }
 }

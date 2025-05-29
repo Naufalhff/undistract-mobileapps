@@ -1,19 +1,6 @@
 package com.example.undistract.features.block_schedules.presentation
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import android.app.TimePickerDialog
-import android.content.Context
-import android.content.pm.PackageManager
-import android.util.Log
-import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,16 +8,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -43,8 +30,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -52,28 +40,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
-import com.example.undistract.R
 import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.add_limit.data.local.ScheduleData
+import com.example.undistract.features.add_limit.presentation.AddLimitViewModel
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
-import com.example.undistract.features.block_schedules.data.local.BlockSchedulesDao
-import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
 import com.example.undistract.ui.components.BackButton
-import com.example.undistract.ui.navigation.BottomNavItem
+import com.example.undistract.ui.theme.ColorNew
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import com.example.undistract.ui.theme.ColorNew
-import kotlinx.coroutines.launch
 
 
 @Composable
 fun BlockSchedulesScreen(
     navController: NavController,
     isParental: Boolean,
+    sharedViewModel: AddLimitViewModel,
     repository: BlockSchedulesRepository,
     selectAppViewModel: SelectAppsViewModel
 ) {
@@ -258,74 +243,17 @@ fun BlockSchedulesScreen(
             }
         }
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val coroutineScope = rememberCoroutineScope()
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = ColorNew.primary
-                    ),
-                    onClick = {
-                        navController.popBackStack()
-                    }
-                ) {
-                    Text("Cancel")
-                }
-
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ColorNew.primary,
-                        contentColor = Color.White
-                    ),
-                    onClick = {
-                        when {
-                            selectedApps.isEmpty() -> Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
-                            allNotSelected -> Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
-                            startTime == endTime -> Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
-                            else -> coroutineScope.launch {
-                                try {
-                                    val appsToSave = listApps.map { app -> app.name to app.identifier }
-                                    viewModel.addBlockSchedules(
-                                        apps = appsToSave,
-                                        daysOfWeek = selectedDays.value.toList().toString(),
-                                        isAllDay = isAllDay,
-                                        startTime = startTime.toString(),
-                                        endTime = endTime.toString(),
-                                        isActive = true,
-                                        isParental = isParental
-                                    )
-                                    if (isParental){
-                                        navController.navigate("parental_usage_limit?isParental=true"){
-                                            launchSingleTop = true
-                                        }
-                                    } else {
-                                        navController.navigate(BottomNavItem.UsageLimit.route){
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                    Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    Log.e("SAVE_ERROR", "Failed to save block schedule", e)
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text("Save")
-                }
-            }
+        LaunchedEffect(selectedDays, isAllDay, startTime, endTime, isParental) {
+            sharedViewModel.updateScheduleData(
+                ScheduleData(
+                    daysOfWeek = selectedDays.value.toList().toString(),
+                    isAllDay = isAllDay,
+                    startTime = startTime.toString(),
+                    endTime = endTime.toString(),
+                    isActive = true,
+                    isParental = isParental
+                )
+            )
         }
     }
 }

@@ -3,7 +3,6 @@ package com.example.undistract.features.block_permanent.presentation
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,10 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,13 +28,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.undistract.R
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
-import com.example.undistract.features.block_permanent.data.local.BlockPermanentDao
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
@@ -47,8 +46,6 @@ fun BlockPermanentScreen(
     repository: BlockPermanentRepository,
     isParental: Boolean
 ) {
-    val context = LocalContext.current
-
     val viewModel: BlockPermanentViewModel = viewModel(
         factory = BlockPermanentViewModelFactory(repository, isParental)
     )
@@ -75,61 +72,29 @@ fun BlockPermanentScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // BACK BUTTON
-        Row (
+        // WARNING SECTION
+        Row(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .align(Alignment.BottomCenter)
+                .padding(top = 16.dp,bottom = 80.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = ColorNew.primary
-                ),
-                onClick = { navController.navigate(BottomNavItem.UsageLimit.route) }
-            ) {
-                Text(text = "Cancel")
-            }
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Warning Icon",
+                tint = Color.Red,
+                modifier = Modifier.size(24.dp)
+            )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Button(
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ColorNew.primary,
-                    contentColor = Color.White
-                ),
-                onClick = {
-                    try {
-                        selectedAppsWithInfo.forEach { item ->
-                            // Menggunakan nama aplikasi atau URL, dan mengatur nilai default untuk nama pembatasan
-                            val blockPermanentEntity = BlockPermanentEntity(
-                                packageName = item.identifier,
-                                appName = restrictionName.ifEmpty { item.name },
-                                isActive = true,
-                                isParental = isParental
-                            )
-                            viewModel.insertBlockPermanent(blockPermanentEntity)
-                            Log.d("BlockPermanentScreen", "Data saved: ${blockPermanentEntity.packageName}, ${blockPermanentEntity.appName}")
-                        }
-                        if (isParental){
-                            navController.navigate("parental_usage_limit?isParental=true"){
-                                launchSingleTop = true
-                            }
-                        } else {
-                            navController.navigate(BottomNavItem.UsageLimit.route){
-                                launchSingleTop = true
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("BlockPermanentScreen", "Error saving data: ${e.message}", e)
-                    }
-                }
-            ) {
-                Text(text = "Save")
-            }
+            Text(
+                text = "Aplikasi yang diblokir permanen tidak bisa dibuka sama sekali hingga Anda menonaktifkannya.",
+                color = Color.Red,
+                fontSize = 14.sp
+            )
         }
     }
 }
