@@ -2,6 +2,7 @@
     <string name="app_name">Undistract</string>
     <string name="add_restriction">Add Limit</string>
     <string name="choose_apps_to_restrict">Choose apps to limit</string>
+    <string name="select_apps_hint">Select one or more apps to access the available limit options</string>
     <string name="choose_what_restriction">How would you like to limit these apps?</string>
     <string name="block_permanently">Block Permanently</string>
     <string name="block_on_a_schedule">Block on a schedule</string>
@@ -10,6 +11,13 @@
     <string name="select_apps">Select Apps</string>
     <string name="placeholder_search_apps">Search apps</string>
     <string name="blocked_app_message">Permanently blocked apps cannot be opened at all until you disable the block.</string>
+    <string name="selected_multiple_apps">%1$s &amp; … other</string>
+    <string name="toast_schedule_data_incomplete">Schedule data is incomplete</string>
+    <string name="toast_select_at_least_one_day">Please select at least one day</string>
+    <string name="toast_start_end_time_same">Start time and end time cannot be same</string>
     <string name="warning_url">This option does not support URLs. Please remove any URL items from the selection.</string>
     <string name="error_time_limit_zero">Time limit cannot be zero minutes.</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="toast_save_success">Save success!</string>
 </resources>

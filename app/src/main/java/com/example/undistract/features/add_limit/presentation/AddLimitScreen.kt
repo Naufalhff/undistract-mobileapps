@@ -4,6 +4,14 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,8 +31,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -96,11 +108,17 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     )
 
     val blockSchedulesViewModel: BlockSchedulesViewModel = viewModel(
-        factory = ViewModelFactoryProvider.provideBlockSchedulesViewModelFactory(context, isParental)
+        factory = ViewModelFactoryProvider.provideBlockSchedulesViewModelFactory(
+            context,
+            isParental
+        )
     )
 
     val variableSessionViewModel: VariableSessionViewModel = viewModel(
-        factory = ViewModelFactoryProvider.provideVariableSessionViewModelFactory(context, isParental)
+        factory = ViewModelFactoryProvider.provideVariableSessionViewModelFactory(
+            context,
+            isParental
+        )
     )
 
     val usageLimitViewModel: UsageLimitViewModel = viewModel(
@@ -108,7 +126,10 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
     )
 
     val setaDailyLimitViewModel: SetaDailyLimitViewModel = viewModel(
-        factory = ViewModelFactoryProvider.provideSetaDailyLimitViewModelFactory(context, isParental)
+        factory = ViewModelFactoryProvider.provideSetaDailyLimitViewModelFactory(
+            context,
+            isParental
+        )
     )
 
     val selectedPackageNames = selectAppsViewModel?.getSelectedIdentifiers()
@@ -129,122 +150,302 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
 
     val selectedAppsPairs = selectedAppsWithInfo.map { it.name to it.identifier }
 
-    Box (
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
         // SECTION 1: BACK BUTTON
-        BackButtonSection(
-            navController, currentMainSection, onSectionChange = { currentMainSection = it }
-        )
+        BackButtonSection(navController,
+            currentMainSection,
+            onSectionChange = { currentMainSection = it })
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Column (
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 56.dp, bottom = 80.dp)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        // SECTION 2: MAIN SECTION
+        if (selectAppsViewModel != null) {
+            if (selectedAppsWithInfo.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 56.dp, bottom = 80.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // APP SELECTOR
+                    AppSelectorSection(selectAppsViewModel, navController)
+                }
 
-            // SECTION 2: APP SELECTOR
-            if (selectAppsViewModel != null) {
-                AppSelectorSection(
-                    selectAppsViewModel,
-                    navController
+                // HINT
+                Text(
+                    text = stringResource(R.string.select_apps_hint),
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 16.dp)
                 )
-            }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 56.dp, bottom = 80.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // APP SELECTOR
+                    AppSelectorSection(selectAppsViewModel, navController)
 
-            if (selectedAppsWithInfo.isNotEmpty()) {
-                // SECTION 3: MAIN QUESTION
-                if (currentMainSection == "base") {
+                    // MAIN SECTION
                     Text(
                         text = stringResource(R.string.choose_what_restriction),
-                        fontSize = 15.sp,
+                        fontSize = 17.sp,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                }
 
-                // SECTION 4: MAIN SECTION
-                when (currentMainSection) {
-                    "base" -> BaseSection(onSectionChange = { currentMainSection = it })
-                    "block_permanent" -> selectAppsViewModel?.let {
-                        BlockPermanentScreen()
+                    if (currentMainSection != "base")
+                    {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFEAD6FF))
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val text = when (currentMainSection) {
+                                    "daily_limit" -> stringResource(R.string.restrict_daily_usage)
+                                    "session_limit" -> stringResource(R.string.apply_custom_session_restriction)
+                                    "block_schedule" -> stringResource(R.string.block_on_a_schedule)
+                                    "block_permanent" -> stringResource(R.string.block_permanently)
+                                    else -> ""
+                                }
+
+                                Text(
+                                    text = text,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp)
+                                )
+
+                                IconButton(
+                                    onClick = {
+                                        if (currentMainSection == "base") {
+                                            navController.navigate(BottomNavItem.UsageLimit.route)
+                                        } else {
+                                            currentMainSection = "base"
+                                        }
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                    "block_schedule" -> selectAppsViewModel?.let {
-                        BlockSchedulesScreen(
-                            selectAppViewModel = it,
-                            isParental = isParental,
-                            sharedViewModel = addLimitViewModel
-                        )
-                    }
-                    "daily_limit" -> selectAppsViewModel?.let {
-                        SetDailyUsageLimitScreen(
-                            selectAppsViewModel = it,
-                            isParental = isParental,
-                            sharedViewModel = addLimitViewModel
-                        )
-                    }
-                    "session_limit" -> selectAppsViewModel?.let {
-                        VariableSessionScreen(
-                            selectAppViewModel = it,
-                            isParental = isParental,
-                            sharedViewModel = addLimitViewModel
-                        )
-                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    MainSectionSwitcher(
+                        currentMainSection = currentMainSection,
+                        onSectionChange = { currentMainSection = it },
+                        selectAppsViewModel = selectAppsViewModel,
+                        isParental = isParental,
+                        addLimitViewModel = addLimitViewModel
+                    )
                 }
             }
         }
 
         if (selectedAppsWithInfo.isNotEmpty()) {
-            // SECTION 5: CANCEL AND SAVE BUTTON
+            // SECTION 3: CANCEL AND SAVE BUTTON
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = ColorNew.primary
-                    ),
-                    onClick = {
-                        navController.navigate(BottomNavItem.UsageLimit.route)
-                    }
-                ) {
-                    Text(text = "Cancel")
+                Button(shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent, contentColor = ColorNew.primary
+                ), onClick = {
+                    navController.navigate(BottomNavItem.UsageLimit.route)
+                }) {
+                    Text(text = stringResource(R.string.action_cancel))
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                val buttonColor = if (currentMainSection != "base" && selectedAppsWithInfo.isNotEmpty())
-                {
-                    ColorNew.primary
-                } else  {
-                    Color.Gray
-                }
+                val buttonColor =
+                    if (currentMainSection != "base" && selectedAppsWithInfo.isNotEmpty()) {
+                        ColorNew.primary
+                    } else {
+                        Color.Gray
+                    }
 
-                Button(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = buttonColor,
-                        contentColor = Color.White
-                    ),
-                    onClick = {
-                        when (currentMainSection) {
-                            "block_permanent" -> {
-                                if (selectedAppsWithInfo.isNotEmpty())
-                                {
-                                    blockPermanentViewModel.saveBlockedApps(
-                                        selectedApps = selectedAppsWithInfo,
-                                        isParental = isParental,
+                Button(shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonColor, contentColor = Color.White
+                ), onClick = {
+                    when (currentMainSection) {
+                        "block_permanent" -> {
+                            if (selectedAppsWithInfo.isNotEmpty()) {
+                                blockPermanentViewModel.saveBlockedApps(selectedApps = selectedAppsWithInfo,
+                                    isParental = isParental,
+                                    onSuccess = {
+                                        if (isParental) {
+                                            navController.navigate("parental_usage_limit?isParental=true") {
+                                                launchSingleTop = true
+                                            }
+                                        } else {
+                                            navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.toast_save_success),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    onError = { e ->
+                                        // Tangani error
+                                        Log.e("BlockPermanent", "Failed to save", e)
+                                    })
+                            }
+                        }
+
+                        "block_schedule" -> {
+                            if (selectedAppsWithInfo.isNotEmpty()) {
+                                when {
+                                    addLimitViewModel.scheduleData.value == null -> {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.toast_schedule_data_incomplete),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    addLimitViewModel.scheduleData.value?.daysOfWeek?.removePrefix("[")
+                                        ?.removeSuffix("]")?.split(",")
+                                        ?.map { it.trim().toBoolean() }?.all { !it } == true -> {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.toast_select_at_least_one_day),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    addLimitViewModel.scheduleData.value != null &&
+                                            !addLimitViewModel.scheduleData.value!!.isAllDay &&
+                                            addLimitViewModel.scheduleData.value!!.startTime == addLimitViewModel.scheduleData.value!!.endTime -> {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.toast_start_end_time_same),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    else -> {
+                                        val data = addLimitViewModel.scheduleData.value!!
+                                        blockSchedulesViewModel.saveBlockSchedule(apps = selectedAppsPairs,
+                                            daysOfWeek = data.daysOfWeek,
+                                            isAllDay = data.isAllDay,
+                                            startTime = data.startTime,
+                                            endTime = data.endTime,
+                                            isActive = data.isActive,
+                                            isParental = data.isParental,
+                                            onSuccess = {
+                                                if (data.isParental) {
+                                                    navController.navigate("parental_usage_limit?isParental=true") {
+                                                        launchSingleTop = true
+                                                    }
+                                                } else {
+                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.toast_save_success),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            },
+                                            onError = { e ->
+                                                Log.e("BlockPermanent", "Failed to save", e)
+                                            })
+                                    }
+                                }
+                            }
+                        }
+
+                        "session_limit" -> {
+                            if (containsUrlItem) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.warning_url),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else if (selectedAppsWithInfo.isNotEmpty()) {
+                                val data = addLimitViewModel.sessionData.value
+                                data?.let { sessionData ->
+                                    variableSessionViewModel.saveVariableSession(apps = selectedAppsPairs,
+                                        secondsLeft = sessionData.secondsLeft,
+                                        coolDownDuration = sessionData.coolDownDuration,
+                                        coolDownEndTime = sessionData.coolDownEndTime,
+                                        isOnCooldown = sessionData.isOnCooldown,
+                                        isActive = sessionData.isActive,
+                                        isParental = sessionData.isParental,
+                                        onSuccess = {
+                                            if (sessionData.isParental) {
+                                                navController.navigate("parental_usage_limit?isParental=true") {
+                                                    launchSingleTop = true
+                                                }
+                                            } else {
+                                                navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                    launchSingleTop = true
+                                                }
+                                            }
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.toast_save_success),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        },
+                                        onError = { e ->
+                                            Log.e("BlockSchedule", "Failed to save", e)
+                                        })
+                                }
+                            }
+                        }
+
+                        "daily_limit" -> {
+                            val data = addLimitViewModel.dailyLimitData.value
+
+                            try {
+                                if (data != null) {
+                                    if (data.timeLimitMinutes == 0) {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.error_time_limit_zero),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    setaDailyLimitViewModel.saveDailyLimits(data = data,
+                                        usageLimitViewModel = usageLimitViewModel,
                                         onSuccess = {
                                             if (isParental) {
                                                 navController.navigate("parental_usage_limit?isParental=true") {
@@ -255,144 +456,26 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                                                     launchSingleTop = true
                                                 }
                                             }
-                                            Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                        },
-                                        onError = { e ->
-                                            // Tangani error
-                                            Log.e("BlockPermanent", "Failed to save", e)
-                                        }
-                                    )
-                                }
-                            }
-
-                            "block_schedule" -> {
-                                if (selectedAppsWithInfo.isNotEmpty()) {
-                                    when {
-                                        addLimitViewModel.scheduleData.value == null -> {
-                                            Toast.makeText(context, "Schedule data is incomplete", Toast.LENGTH_SHORT).show()
-                                        }
-                                        addLimitViewModel.scheduleData.value?.daysOfWeek
-                                            ?.removePrefix("[")?.removeSuffix("]")
-                                            ?.split(",")?.map { it.trim().toBoolean() }
-                                            ?.all { !it } == true -> {
-                                            Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
-                                        }
-                                        addLimitViewModel.scheduleData.value != null && !addLimitViewModel.scheduleData.value!!.isAllDay &&
-                                                addLimitViewModel.scheduleData.value!!.startTime == addLimitViewModel.scheduleData.value!!.endTime -> {
-                                            Toast.makeText(context, "Start time and end time cannot be same", Toast.LENGTH_SHORT).show()
-                                        }
-                                        else -> {
-                                            val data = addLimitViewModel.scheduleData.value!!
-                                            blockSchedulesViewModel.saveBlockSchedule(
-                                                apps = selectedAppsPairs,
-                                                daysOfWeek = data.daysOfWeek,
-                                                isAllDay = data.isAllDay,
-                                                startTime = data.startTime,
-                                                endTime = data.endTime,
-                                                isActive = data.isActive,
-                                                isParental = data.isParental,
-                                                onSuccess = {
-                                                    if (data.isParental) {
-                                                        navController.navigate("parental_usage_limit?isParental=true") {
-                                                            launchSingleTop = true
-                                                        }
-                                                    } else {
-                                                        navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                            launchSingleTop = true
-                                                        }
-                                                    }
-                                                    Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { e ->
-                                                    Log.e("BlockPermanent", "Failed to save", e)
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            "session_limit" -> {
-                                if (containsUrlItem) {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.warning_url)
-                                        ,Toast.LENGTH_SHORT
-                                    ).show()
-                                } else if (selectedAppsWithInfo.isNotEmpty()) {
-                                    val data = addLimitViewModel.sessionData.value
-                                    data?.let { sessionData ->
-                                        variableSessionViewModel.saveVariableSession(
-                                            apps = selectedAppsPairs,
-                                            secondsLeft = sessionData.secondsLeft,
-                                            coolDownDuration = sessionData.coolDownDuration,
-                                            coolDownEndTime = sessionData.coolDownEndTime,
-                                            isOnCooldown = sessionData.isOnCooldown,
-                                            isActive = sessionData.isActive,
-                                            isParental = sessionData.isParental,
-                                            onSuccess = {
-                                                if (sessionData.isParental) {
-                                                    navController.navigate("parental_usage_limit?isParental=true") {
-                                                        launchSingleTop = true
-                                                    }
-                                                } else {
-                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                        launchSingleTop = true
-                                                    }
-                                                }
-                                                Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                            },
-                                            onError = { e ->
-                                                Log.e("BlockSchedule", "Failed to save", e)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            "daily_limit" -> {
-                                val data = addLimitViewModel.dailyLimitData.value
-
-                                try {
-                                    if (data != null) {
-                                        if (data.timeLimitMinutes == 0) {
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.error_time_limit_zero),
+                                                context.getString(R.string.toast_save_success),
                                                 Toast.LENGTH_SHORT
                                             ).show()
-                                        }
-
-                                        setaDailyLimitViewModel.saveDailyLimits(
-                                            data = data,
-                                            usageLimitViewModel = usageLimitViewModel,
-                                            onSuccess = {
-                                                if (isParental) {
-                                                    navController.navigate("parental_usage_limit?isParental=true") {
-                                                        launchSingleTop = true
-                                                    }
-                                                } else {
-                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                        launchSingleTop = true
-                                                    }
-                                                }
-                                                Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
-                                            },
-                                            onError = { _ ->
-                                                Log.e("SetDailyLimit", "Failed to save")
-                                            }
-                                        )
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("AddLimitScreen", "Exception saving daily limits", e)
+                                        },
+                                        onError = { _ ->
+                                            Log.e("SetDailyLimit", "Failed to save")
+                                        })
                                 }
+                            } catch (e: Exception) {
+                                Log.e("AddLimitScreen", "Exception saving daily limits", e)
                             }
-
                         }
+
                     }
+                }
 
                 ) {
-                    Text(text = "Save")
+                    Text(text = stringResource(R.string.action_save))
                 }
             }
         }
@@ -401,11 +484,9 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
 
 @Composable
 fun BackButtonSection(
-    navController: NavHostController,
-    currentMainSection: String,
-    onSectionChange: (String) -> Unit
+    navController: NavHostController, currentMainSection: String, onSectionChange: (String) -> Unit
 ) {
-    Row (
+    Row(
         modifier = Modifier
             .padding(start = 16.dp)
             .fillMaxWidth()
@@ -413,16 +494,13 @@ fun BackButtonSection(
             .background(MaterialTheme.colorScheme.background),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BackButton (
-            modifier = Modifier.size(24.dp),
-            onClick = {
-                if (currentMainSection == "base") {
-                    navController.navigate(BottomNavItem.UsageLimit.route)
-                } else {
-                    onSectionChange("base")
-                }
+        BackButton(modifier = Modifier.size(24.dp), onClick = {
+            if (currentMainSection == "base") {
+                navController.navigate(BottomNavItem.UsageLimit.route)
+            } else {
+                onSectionChange("base")
             }
-        )
+        })
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -461,17 +539,15 @@ fun AppSelectorSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFEAD6FF))
-                .padding(16.dp)
-                .clickable {
-                    navController.navigate("select_apps")
-                }
-        ) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFEAD6FF))
+            .padding(16.dp)
+            .clickable {
+                navController.navigate("select_apps")
+            }) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -518,14 +594,12 @@ fun AppSelectorSection(
                     modifier = Modifier.weight(1f)
                 ) {
                     if (selectedApps.isEmpty()) {
-                        Text(
-                            text = "Select Apps",
+                        Text(text = stringResource(R.string.select_apps),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable {
                                 navController.navigate("select_apps")
-                            }
-                        )
+                            })
                     } else if (selectedApps.size == 1) {
                         // Show just the single app
                         Row(
@@ -535,8 +609,7 @@ fun AppSelectorSection(
                             AppIcon(app = selectedApps[0], size = 24.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = selectedApps[0].name,
-                                fontWeight = FontWeight.Medium
+                                text = selectedApps[0].name, fontWeight = FontWeight.Medium
                             )
                         }
                     } else {
@@ -548,7 +621,10 @@ fun AppSelectorSection(
                             AppIcon(app = selectedApps[0], size = 24.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${selectedApps[0].name} & ... other",
+                                text = stringResource(
+                                    R.string.selected_multiple_apps,
+                                    selectedApps[0].name
+                                ),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -592,6 +668,73 @@ private fun AppIcon(app: AppOrUrlItem, size: Dp) {
 }
 
 @Composable
+fun MainSectionSwitcher(
+    currentMainSection: String,
+    onSectionChange: (String) -> Unit,
+    selectAppsViewModel: SelectAppsViewModel?,
+    isParental: Boolean,
+    addLimitViewModel: AddLimitViewModel
+) {
+    AnimatedContent(
+        targetState = currentMainSection,
+        transitionSpec = {
+            if (targetState > initialState) {
+                slideInHorizontally(
+                    animationSpec = tween(300),
+                    initialOffsetX = { fullWidth -> fullWidth }
+                ) + fadeIn(animationSpec = tween(300)) togetherWith
+                        slideOutHorizontally(
+                            animationSpec = tween(300),
+                            targetOffsetX = { fullWidth -> -fullWidth }
+                        ) + fadeOut(animationSpec = tween(300))
+            } else {
+                slideInHorizontally(
+                    animationSpec = tween(300),
+                    initialOffsetX = { fullWidth -> -fullWidth }
+                ) + fadeIn(animationSpec = tween(300)) togetherWith
+                        slideOutHorizontally(
+                            animationSpec = tween(300),
+                            targetOffsetX = { fullWidth -> fullWidth }
+                        ) + fadeOut(animationSpec = tween(300))
+            }.using(
+                SizeTransform(clip = false)
+            )
+        }
+    ) { targetSection ->
+        when (targetSection) {
+            "base" -> BaseSection(onSectionChange = onSectionChange)
+            "block_permanent" -> selectAppsViewModel?.let {
+                BlockPermanentScreen()
+            }
+
+            "block_schedule" -> selectAppsViewModel?.let {
+                BlockSchedulesScreen(
+                    selectAppViewModel = it,
+                    isParental = isParental,
+                    sharedViewModel = addLimitViewModel
+                )
+            }
+
+            "daily_limit" -> selectAppsViewModel?.let {
+                SetDailyUsageLimitScreen(
+                    selectAppsViewModel = it,
+                    isParental = isParental,
+                    sharedViewModel = addLimitViewModel
+                )
+            }
+
+            "session_limit" -> selectAppsViewModel?.let {
+                VariableSessionScreen(
+                    selectAppViewModel = it,
+                    isParental = isParental,
+                    sharedViewModel = addLimitViewModel
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun BaseSection(onSectionChange: (String) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -600,50 +743,37 @@ fun BaseSection(onSectionChange: (String) -> Unit) {
     ) {
         // FIRST LINE
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            FlexboxItem(
-                iconResId = R.drawable.block_permanent_icon,
+            FlexboxItem(iconResId = R.drawable.block_permanent_icon,
                 label = stringResource(R.string.block_permanently),
-                onClick = { onSectionChange("block_permanent") }
-            )
+                onClick = { onSectionChange("block_permanent") })
 
-            FlexboxItem(
-                iconResId = R.drawable.block_schedule_icon,
+            FlexboxItem(iconResId = R.drawable.block_schedule_icon,
                 label = stringResource(R.string.block_on_a_schedule),
-                onClick = { onSectionChange("block_schedule") }
-            )
+                onClick = { onSectionChange("block_schedule") })
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // SECOND LINE
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            FlexboxItem(
-                iconResId = R.drawable.daily_usage_icon,
+            FlexboxItem(iconResId = R.drawable.daily_usage_icon,
                 label = stringResource(R.string.restrict_daily_usage),
-                onClick = { onSectionChange("daily_limit") }
-            )
+                onClick = { onSectionChange("daily_limit") })
 
-            FlexboxItem(
-                iconResId = R.drawable.custom_restriction_icon,
+            FlexboxItem(iconResId = R.drawable.custom_restriction_icon,
                 label = stringResource(R.string.apply_custom_session_restriction),
-                onClick = { onSectionChange("session_limit") }
-            )
+                onClick = { onSectionChange("session_limit") })
         }
     }
 }
 
 @Composable
 fun FlexboxItem(
-    @DrawableRes iconResId: Int,
-    label: String,
-    isSelected: Boolean = false,
-    onClick: () -> Unit
+    @DrawableRes iconResId: Int, label: String, isSelected: Boolean = false, onClick: () -> Unit
 ) {
     val painter = painterResource(id = iconResId)
 
@@ -657,8 +787,7 @@ fun FlexboxItem(
                 shape = RoundedCornerShape(8.dp),
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
             )
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
+            .clickable { onClick() }, contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier

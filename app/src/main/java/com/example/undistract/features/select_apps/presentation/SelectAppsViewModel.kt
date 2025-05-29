@@ -72,7 +72,10 @@ class SelectAppsViewModel(
         identifiers.forEach { id ->
             selectedApps[id] = shouldSelectAll
         }
+
+        selectAppsRepository.setSelectedApps(identifiers, shouldSelectAll)
     }
+
 
     fun toggleAppSelection(identifier: String, isSelected: Boolean) {
         selectedApps[identifier] = isSelected
