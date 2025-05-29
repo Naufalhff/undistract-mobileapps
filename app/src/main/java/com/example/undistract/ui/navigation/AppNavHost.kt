@@ -180,13 +180,7 @@ fun AppNavHost(context: Context) {
                         type = NavType.BoolType
                     })
                 ) { backStackEntry ->
-                    val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
-                    BlockPermanentScreen(
-                        navController = navController,
-                        selectAppsViewModel = selectAppsViewModel,
-                        repository = blockPermanentRepository,
-                        isParental = isParental
-                    )
+                    BlockPermanentScreen()
                 }
 
                 composable(
@@ -198,9 +192,7 @@ fun AppNavHost(context: Context) {
                 ) { backStackEntry ->
                     val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                     BlockSchedulesScreen(
-                        navController = navController,
                         isParental = isParental,
-                        repository = blockSchedulesRepository,
                         selectAppViewModel = selectAppsViewModel,
                         sharedViewModel = addLimitViewModel
                     )
@@ -215,8 +207,6 @@ fun AppNavHost(context: Context) {
                 ) { backStackEntry ->
                     val isParental = backStackEntry.arguments?.getBoolean("isParental") ?: false
                     VariableSessionScreen(
-                        navController = navController,
-                        repository = variableSessionRepository,
                         selectAppViewModel = selectAppsViewModel,
                         isParental = isParental,
                         sharedViewModel = addLimitViewModel

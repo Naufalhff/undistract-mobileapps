@@ -1,18 +1,8 @@
 package com.example.undistract.features.variable_session.presentation
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import android.content.Context
-import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,8 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +33,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -53,35 +43,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import kotlinx.coroutines.launch
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.undistract.R
 import com.example.undistract.features.add_limit.data.local.VariableSessionData
 import com.example.undistract.features.add_limit.presentation.AddLimitViewModel
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
-import com.example.undistract.features.variable_session.data.VariableSessionRepository
-import com.example.undistract.features.variable_session.domain.VariableSessionManager
-import com.example.undistract.ui.components.BackButton
-import com.example.undistract.ui.navigation.BottomNavItem
 import com.example.undistract.ui.theme.ColorNew
 import kotlinx.coroutines.launch
 
 @Composable
 fun VariableSessionScreen(
-    navController: NavController,
-    repository: VariableSessionRepository,
-    selectAppViewModel: SelectAppsViewModel,
-    sharedViewModel: AddLimitViewModel,
-    isParental: Boolean
+    selectAppViewModel: SelectAppsViewModel, sharedViewModel: AddLimitViewModel, isParental: Boolean
 ) {
-    val context = LocalContext.current
-    val viewModel: VariableSessionViewModel = viewModel(
-        factory = VariableSessionViewModelFactory(repository, isParental)
-    )
-
     var showDialog by remember { mutableStateOf(false) }
     var isOn by remember { mutableStateOf("Off") }
     var coolDownHours by remember { mutableStateOf("") }
@@ -124,12 +98,10 @@ fun VariableSessionScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            OutlinedTextField(
-                                value = coolDownHours,
+                            OutlinedTextField(value = coolDownHours,
                                 onValueChange = { newValue ->
                                     coolDownHours = newValue.toIntOrNull()?.toString() ?: ""
                                 },
@@ -138,8 +110,7 @@ fun VariableSessionScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = coolDownMinutes,
+                            OutlinedTextField(value = coolDownMinutes,
                                 onValueChange = { newValue ->
                                     coolDownMinutes = newValue.toIntOrNull()?.toString() ?: ""
                                 },
@@ -159,7 +130,8 @@ fun VariableSessionScreen(
                             }
                             TextButton(onClick = {
                                 showDialog = false
-                                isOn = if (coolDownMinutes.isNotEmpty() && coolDownMinutes != "0" || coolDownHours.isNotEmpty() && coolDownHours != "0") "On" else "Off"
+                                isOn =
+                                    if (coolDownMinutes.isNotEmpty() && coolDownMinutes != "0" || coolDownHours.isNotEmpty() && coolDownHours != "0") "On" else "Off"
                             }) {
                                 Text(text = "OK")
                             }
@@ -181,7 +153,7 @@ fun VariableSessionScreen(
                 .fillMaxWidth()
                 .border(2.dp, ColorNew.primary, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(225,225,225))
+                .background(Color(225, 225, 225))
                 .padding(12.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
@@ -198,18 +170,16 @@ fun VariableSessionScreen(
             )
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(2.dp, ColorNew.primary, RoundedCornerShape(16.dp))
-                .clip(RoundedCornerShape(16.dp))
-                .clickable {
-                    showDialog = true
-                }
-                .padding(12.dp),
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, ColorNew.primary, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .clickable {
+                showDialog = true
+            }
+            .padding(12.dp),
             horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 painter = painterResource(R.drawable.timer_icon),
                 contentDescription = "Timer",
@@ -245,7 +215,11 @@ fun VariableSessionScreen(
 }
 
 @Composable
-fun VariableLimitDialog (navController: NavController, viewModel: VariableSessionViewModel, packageName: String){
+fun VariableLimitDialog(
+    navController: NavController,
+    viewModel: VariableSessionViewModel,
+    packageName: String
+) {
 
     var showDialog by remember { mutableStateOf(false) }
     var hours by remember { mutableStateOf("") }
@@ -272,18 +246,15 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Session Limit",
-                        style = MaterialTheme.typography.headlineSmall
+                        text = "Session Limit", style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        OutlinedTextField(
-                            value = hours,
+                        OutlinedTextField(value = hours,
                             onValueChange = { newValue ->
                                 hours = newValue.toIntOrNull()?.toString() ?: ""
                             },
@@ -292,8 +263,7 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = minutes,
+                        OutlinedTextField(value = minutes,
                             onValueChange = { newValue ->
                                 minutes = newValue.toIntOrNull()?.toString() ?: ""
                             },
@@ -305,14 +275,13 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
                     ) {
-                        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                        val launchIntent =
+                            context.packageManager.getLaunchIntentForPackage(packageName)
                         TextButton(onClick = {
                             viewModel.updateIsActive(
-                                packageName,
-                                false
+                                packageName, false
                             )
                             context.startActivity(launchIntent)
                         }) {
@@ -324,20 +293,33 @@ fun VariableLimitDialog (navController: NavController, viewModel: VariableSessio
                                     val minutesValue = minutes.trim()
                                     val hoursValue = hours.trim()
 
-                                    val isMinutesEmpty = minutesValue.isEmpty() || minutesValue == "0"
+                                    val isMinutesEmpty =
+                                        minutesValue.isEmpty() || minutesValue == "0"
                                     val isHoursEmpty = hoursValue.isEmpty() || hoursValue == "0"
 
                                     if (isMinutesEmpty && isHoursEmpty) {
-                                        Toast.makeText(context, "Please insert minutes and/or hours to limit the session", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Please insert minutes and/or hours to limit the session",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     } else {
-                                        viewModel.updateSecondsLeft(packageName, calculate(minutesValue, hoursValue))
+                                        viewModel.updateSecondsLeft(
+                                            packageName,
+                                            calculate(minutesValue, hoursValue)
+                                        )
                                         context.startActivity(launchIntent)
-                                        Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Save Success!", Toast.LENGTH_SHORT)
+                                            .show()
                                     }
 
                                 } catch (e: Exception) {
                                     navController.popBackStack()
-                                    Toast.makeText(context, "Save Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Save Failed: ${e.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     Log.e("SAVE_ERROR", "Failed to save variable session", e)
                                 }
                             }

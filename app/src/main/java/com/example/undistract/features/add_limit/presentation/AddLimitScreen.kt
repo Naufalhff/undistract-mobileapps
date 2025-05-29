@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,8 +42,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -56,23 +53,15 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.example.undistract.R
-import com.example.undistract.config.AppDatabase
-import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
+import com.example.undistract.di.ViewModelFactoryProvider
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentScreen
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModel
-import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
-import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesScreen
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
-import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
-import com.example.undistract.features.select_apps.presentation.BlockSchedulesViewModelFactory
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
-import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
-import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
-import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.navigation.BottomNavItem
 import com.example.undistract.ui.theme.ColorNew
@@ -81,46 +70,34 @@ import com.example.undistract.ui.theme.ColorNew
 @Composable
 fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean = false) {
     val context = LocalContext.current
-    val database = AppDatabase.getDatabase(context)
-    var currentMainSection by remember { mutableStateOf("base") }
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
-    Log.d("ADD_RESTRICTION_PARENTAL","Status: $isParental")
-
-    val blockPermanentDao = remember { database.blockPermanentDao() }
-    val blockSchedulesDao = remember { database.blockSchedulesDao() }
-    val variableSessionDao = remember { database.variableSessionDao() }
-    val visitedUrlsDao = remember { database.visitedUrlsDao() }
-
-    val blockPermanentRepository = remember { BlockPermanentRepository(blockPermanentDao) }
-    val variableSessionRepository = remember { VariableSessionRepository(variableSessionDao) }
-    val blockSchedulesRepository = remember { BlockSchedulesRepository(blockSchedulesDao) }
-    val visitedUrlsRepository = remember { VisitedUrlsRepository(visitedUrlsDao) }
+    var currentMainSection by remember { mutableStateOf("base") }
 
     val selectAppsViewModel = runCatching {
         if (parentEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
             viewModel<SelectAppsViewModel>(
                 viewModelStoreOwner = parentEntry,
-                factory = SelectAppsViewModelFactory(context, visitedUrlsRepository = visitedUrlsRepository)
+                factory = ViewModelFactoryProvider.provideSelectAppsViewModelFactory(context)
             )
         } else null
     }.getOrNull()
 
     val addLimitViewModel: AddLimitViewModel = viewModel(
-        factory = AddLimitViewModelFactory()
+        factory = ViewModelFactoryProvider.provideAddLimitViewModelFactory()
     )
 
     val blockPermanentViewModel: BlockPermanentViewModel = viewModel(
-        factory = BlockPermanentViewModelFactory(blockPermanentRepository, isParental)
+        factory = ViewModelFactoryProvider.provideBlockPermanentViewModelFactory(context, isParental)
     )
 
     val blockSchedulesViewModel: BlockSchedulesViewModel = viewModel(
-        factory = BlockSchedulesViewModelFactory(context)
+        factory = ViewModelFactoryProvider.provideBlockSchedulesViewModelFactory(context, isParental)
     )
 
     val variableSessionViewModel: VariableSessionViewModel = viewModel(
-        factory = VariableSessionViewModelFactory(variableSessionRepository, isParental)
+        factory = ViewModelFactoryProvider.provideVariableSessionViewModelFactory(context, isParental)
     )
 
     val selectedPackageNames = selectAppsViewModel?.getSelectedIdentifiers()
@@ -184,18 +161,11 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                 when (currentMainSection) {
                     "base" -> BaseSection(onSectionChange = { currentMainSection = it })
                     "block_permanent" -> selectAppsViewModel?.let {
-                        BlockPermanentScreen(
-                            navController = navController,
-                            selectAppsViewModel = it,
-                            repository = blockPermanentRepository,
-                            isParental = isParental
-                        )
+                        BlockPermanentScreen()
                     }
                     "block_schedule" -> selectAppsViewModel?.let {
                         BlockSchedulesScreen(
-                            navController = navController,
                             selectAppViewModel = it,
-                            repository = blockSchedulesRepository,
                             isParental = isParental,
                             sharedViewModel = addLimitViewModel
                         )
@@ -203,9 +173,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
 //                "daily_limit" -> SetDailyUsageLimitScreen()
                     "session_limit" -> selectAppsViewModel?.let {
                         VariableSessionScreen(
-                            navController = navController,
                             selectAppViewModel = it,
-                            repository = variableSessionRepository,
                             isParental = isParental,
                             sharedViewModel = addLimitViewModel
                         )
@@ -486,12 +454,11 @@ fun AppSelectorSection(
                     modifier = Modifier.weight(1f)
                 ) {
                     if (selectedApps.isEmpty()) {
-                        ClickableText(
-                            text = AnnotatedString(
-                                "Select Apps",
-                                SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            ),
-                            onClick = {
+                        Text(
+                            text = "Select Apps",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
                                 navController.navigate("select_apps")
                             }
                         )

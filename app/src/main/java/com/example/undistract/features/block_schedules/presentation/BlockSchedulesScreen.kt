@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,17 +36,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.undistract.config.AppDatabase
 import com.example.undistract.features.add_limit.data.local.BlockScheduleData
 import com.example.undistract.features.add_limit.presentation.AddLimitViewModel
-import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
-import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
-import com.example.undistract.ui.components.BackButton
 import com.example.undistract.ui.theme.ColorNew
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -56,16 +49,10 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun BlockSchedulesScreen(
-    navController: NavController,
-    isParental: Boolean,
-    sharedViewModel: AddLimitViewModel,
-    repository: BlockSchedulesRepository,
-    selectAppViewModel: SelectAppsViewModel
+    isParental: Boolean, sharedViewModel: AddLimitViewModel, selectAppViewModel: SelectAppsViewModel
 ) {
     val context = LocalContext.current
-    val viewModel: BlockSchedulesViewModel = viewModel(
-        factory = BlockSchedulesViewModelFactory(repository, isParental)
-    )
+
     // Mengambil selected apps
     val selectedApps = selectAppViewModel.getSelectedIdentifiers()
     val database = AppDatabase.getDatabase(context)
@@ -103,10 +90,12 @@ fun BlockSchedulesScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text ("When do you want to block the selected apps?", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "When do you want to block the selected apps?",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
 
         // Pemilihan Hari
@@ -117,23 +106,19 @@ fun BlockSchedulesScreen(
                 .padding(8.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 days.forEachIndexed { index, day ->
-                    DaySelector(
-                        day = day,
+                    DaySelector(day = day,
                         isSelected = selectedDays.value[index],
                         isAllDay = isAllDay,
                         onSelect = {
-                            if (!isAllDay){
+                            if (!isAllDay) {
                                 val updatedSelection = selectedDays.value.toMutableList()
                                 updatedSelection[index] = !updatedSelection[index]
                                 selectedDays.value = updatedSelection
                             }
-                        }
-                    )
+                        })
                 }
             }
         }
@@ -149,12 +134,10 @@ fun BlockSchedulesScreen(
                 isAllDay = true
             }
             Switch(
-                checked = isAllDay,
-                onCheckedChange = {
+                checked = isAllDay, onCheckedChange = {
                     isAllDay = it
                     selectedDays.value = MutableList(selectedDays.value.size) { isAllDay }
-                },
-                colors = SwitchDefaults.colors(
+                }, colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White, // Warna thumb saat switch on
                     checkedTrackColor = ColorNew.primary, // Warna track saat switch on
                     uncheckedThumbColor = Color.Gray, // Warna thumb saat switch off
@@ -169,25 +152,17 @@ fun BlockSchedulesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .clickable {
-                        val timePickerDialog = TimePickerDialog(
-                            context,
-                            { _, hourOfDay, minute ->
-                                startTime = LocalTime.of(hourOfDay, minute)
-                            },
-                            0,
-                            0,
-                            true
-                        )
-                        timePickerDialog.show()
-                    }
-            ) {
+            Column(modifier = Modifier.clickable {
+                val timePickerDialog = TimePickerDialog(
+                    context, { _, hourOfDay, minute ->
+                        startTime = LocalTime.of(hourOfDay, minute)
+                    }, 0, 0, true
+                )
+                timePickerDialog.show()
+            }) {
                 Text("Start Time", style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    startTime.format(timeFormatter),
-                    style = MaterialTheme.typography.titleMedium
+                    startTime.format(timeFormatter), style = MaterialTheme.typography.titleMedium
                 )
             }
 
@@ -199,25 +174,17 @@ fun BlockSchedulesScreen(
             )
 
             // End Time
-            Column(
-                modifier = Modifier
-                    .clickable {
-                        val timePickerDialog = TimePickerDialog(
-                            context,
-                            { _, hourOfDay, minute ->
-                                endTime = LocalTime.of(hourOfDay, minute)
-                            },
-                            0,
-                            0,
-                            true
-                        )
-                        timePickerDialog.show()
-                    }
-            ) {
+            Column(modifier = Modifier.clickable {
+                val timePickerDialog = TimePickerDialog(
+                    context, { _, hourOfDay, minute ->
+                        endTime = LocalTime.of(hourOfDay, minute)
+                    }, 0, 0, true
+                )
+                timePickerDialog.show()
+            }) {
                 Text("End Time", style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    endTime.format(timeFormatter),
-                    style = MaterialTheme.typography.titleMedium
+                    endTime.format(timeFormatter), style = MaterialTheme.typography.titleMedium
                 )
             }
         }
@@ -239,17 +206,16 @@ fun BlockSchedulesScreen(
 
 @Composable
 fun DaySelector(
-    day: String,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    isAllDay: Boolean
+    day: String, isSelected: Boolean, onSelect: () -> Unit, isAllDay: Boolean
 ) {
-    if(!isAllDay){
+    if (!isAllDay) {
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(if (isSelected) ColorNew.primary else Color.Transparent, shape = CircleShape)
+                .background(
+                    if (isSelected) ColorNew.primary else Color.Transparent, shape = CircleShape
+                )
                 .border(1.dp, ColorNew.primary, CircleShape)
                 .clickable(onClick = onSelect),
             contentAlignment = Alignment.Center
@@ -271,9 +237,7 @@ fun DaySelector(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = day,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
+                text = day, color = Color.White, fontWeight = FontWeight.Bold
             )
         }
     }
