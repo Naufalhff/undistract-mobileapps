@@ -6,6 +6,8 @@ import com.example.undistract.features.add_limit.presentation.AddLimitViewModelF
 import com.example.undistract.features.block_permanent.presentation.BlockPermanentViewModelFactory
 import com.example.undistract.features.block_schedules.data.BlockSchedulesViewModelFactory
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModelFactory
+import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModelFactory
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModelFactory
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModelFactory
 
 object ViewModelFactoryProvider {
@@ -33,5 +35,25 @@ object ViewModelFactoryProvider {
     fun provideVariableSessionViewModelFactory(context: Context, isParental: Boolean): ViewModelProvider.Factory {
         val variableSessionRepo = AppDependenciesProvider.provideVariableSessionRepository(context)
         return VariableSessionViewModelFactory(variableSessionRepo, isParental)
+    }
+
+    fun provideSetaDailyLimitViewModelFactory(context: Context, isParental: Boolean): ViewModelProvider.Factory {
+        val repository = AppDependenciesProvider.provideSetaDailyLimitRepository(context)
+        return SetaDailyLimitViewModelFactory(repository, isParental)
+    }
+
+    fun provideUsageLimitViewModelFactory(context: Context, isParental: Boolean): ViewModelProvider.Factory {
+        val setDailyLimitRepo = AppDependenciesProvider.provideSetaDailyLimitRepository(context)
+        val blockSchedulesRepo = AppDependenciesProvider.provideBlockSchedulesRepository(context)
+        val variableSessionRepo = AppDependenciesProvider.provideVariableSessionRepository(context)
+        val blockPermanentRepo = AppDependenciesProvider.provideBlockPermanentRepository(context)
+
+        return UsageLimitViewModelFactory(
+            setDailyLimitRepo,
+            blockSchedulesRepo,
+            variableSessionRepo,
+            blockPermanentRepo,
+            isParental
+        )
     }
 }

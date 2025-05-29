@@ -2,10 +2,10 @@ package com.example.undistract.features.setadaily_limit.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
 
 class SetaDailyLimitViewModelFactory(
-    private val repository: SetaDailyLimitRepositoryImpl,
+    private val repository: SetaDailyLimitRepository,
     private val isParental: Boolean
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

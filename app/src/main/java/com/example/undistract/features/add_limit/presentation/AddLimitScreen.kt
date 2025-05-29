@@ -60,6 +60,9 @@ import com.example.undistract.features.block_schedules.presentation.BlockSchedul
 import com.example.undistract.features.block_schedules.presentation.BlockSchedulesViewModel
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.select_apps.presentation.SelectAppsViewModel
+import com.example.undistract.features.setadaily_limit.presentation.SetDailyUsageLimitScreen
+import com.example.undistract.features.setadaily_limit.presentation.SetaDailyLimitViewModel
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import com.example.undistract.features.variable_session.presentation.VariableSessionScreen
 import com.example.undistract.features.variable_session.presentation.VariableSessionViewModel
 import com.example.undistract.ui.components.BackButton
@@ -100,6 +103,14 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
         factory = ViewModelFactoryProvider.provideVariableSessionViewModelFactory(context, isParental)
     )
 
+    val usageLimitViewModel: UsageLimitViewModel = viewModel(
+        factory = ViewModelFactoryProvider.provideUsageLimitViewModelFactory(context, isParental)
+    )
+
+    val setaDailyLimitViewModel: SetaDailyLimitViewModel = viewModel(
+        factory = ViewModelFactoryProvider.provideSetaDailyLimitViewModelFactory(context, isParental)
+    )
+
     val selectedPackageNames = selectAppsViewModel?.getSelectedIdentifiers()
 
     val combinedItems = selectAppsViewModel?.combinedItems?.collectAsState()?.value.orEmpty()
@@ -113,6 +124,8 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
             }
         }
     }
+
+    val containsUrlItem = selectedAppsWithInfo.any { it is AppOrUrlItem.UrlItem }
 
     val selectedAppsPairs = selectedAppsWithInfo.map { it.name to it.identifier }
 
@@ -170,7 +183,13 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                             sharedViewModel = addLimitViewModel
                         )
                     }
-//                "daily_limit" -> SetDailyUsageLimitScreen()
+                    "daily_limit" -> selectAppsViewModel?.let {
+                        SetDailyUsageLimitScreen(
+                            selectAppsViewModel = it,
+                            isParental = isParental,
+                            sharedViewModel = addLimitViewModel
+                        )
+                    }
                     "session_limit" -> selectAppsViewModel?.let {
                         VariableSessionScreen(
                             selectAppViewModel = it,
@@ -285,7 +304,7 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                                                     Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
                                                 },
                                                 onError = { e ->
-                                                    Log.e("BlockSchedule", "Failed to save", e)
+                                                    Log.e("BlockPermanent", "Failed to save", e)
                                                 }
                                             )
                                         }
@@ -294,7 +313,13 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                             }
 
                             "session_limit" -> {
-                                if (selectedAppsWithInfo.isNotEmpty()) {
+                                if (containsUrlItem) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.warning_url)
+                                        ,Toast.LENGTH_SHORT
+                                    ).show()
+                                } else if (selectedAppsWithInfo.isNotEmpty()) {
                                     val data = addLimitViewModel.sessionData.value
                                     data?.let { sessionData ->
                                         variableSessionViewModel.saveVariableSession(
@@ -324,6 +349,45 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                                     }
                                 }
                             }
+
+                            "daily_limit" -> {
+                                val data = addLimitViewModel.dailyLimitData.value
+
+                                try {
+                                    if (data != null) {
+                                        if (data.timeLimitMinutes == 0) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.error_time_limit_zero),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+
+                                        setaDailyLimitViewModel.saveDailyLimits(
+                                            data = data,
+                                            usageLimitViewModel = usageLimitViewModel,
+                                            onSuccess = {
+                                                if (isParental) {
+                                                    navController.navigate("parental_usage_limit?isParental=true") {
+                                                        launchSingleTop = true
+                                                    }
+                                                } else {
+                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                                Toast.makeText(context, "Save success!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { _ ->
+                                                Log.e("SetDailyLimit", "Failed to save")
+                                            }
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("AddLimitScreen", "Exception saving daily limits", e)
+                                }
+                            }
+
                         }
                     }
 

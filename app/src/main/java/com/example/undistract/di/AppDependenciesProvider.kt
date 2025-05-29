@@ -6,6 +6,8 @@ import com.example.undistract.features.block_permanent.data.BlockPermanentReposi
 import com.example.undistract.features.block_schedules.data.BlockSchedulesRepository
 import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.select_apps.data.SelectAppsRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 
 object AppDependenciesProvider {
@@ -37,5 +39,11 @@ object AppDependenciesProvider {
     fun provideVisitedUrlsRepository(context: Context): VisitedUrlsRepository {
         val dao = provideDatabase(context).visitedUrlsDao()
         return VisitedUrlsRepository(dao)
+    }
+
+    fun provideSetaDailyLimitRepository(context: Context): SetaDailyLimitRepository {
+        val database = AppDatabase.getDatabase(context)
+        val dao = database.setaDailyLimitDao()
+        return SetaDailyLimitRepositoryImpl(dao)
     }
 }

@@ -5,10 +5,11 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.undistract.features.add_limit.data.local.DailyLimitData
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
-import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
 import com.example.undistract.features.setadaily_limit.data.local.SetaDailyLimitEntity
+import com.example.undistract.features.usage_limit.presentation.UsageLimitViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,33 @@ class SetaDailyLimitViewModel(
                 Log.d(TAG, "Received ${limits.size} limits from database")
                 _dailyLimits.value = limits
             }
+        }
+    }
+
+    fun saveDailyLimits(
+        data: DailyLimitData,
+        usageLimitViewModel: UsageLimitViewModel,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (!data.isValid()) {
+            onError("Please select at least one app and set a valid time limit")
+            return
+        }
+
+        try {
+            val entities = data.toEntities()
+
+            addMultipleDailyLimits(entities) { success ->
+                if (success) {
+                    usageLimitViewModel.refreshLimits()
+                    onSuccess()
+                } else {
+                    onError("Error saving limits")
+                }
+            }
+        } catch (e: Exception) {
+            onError(e.message ?: "Unknown error occurred")
         }
     }
 

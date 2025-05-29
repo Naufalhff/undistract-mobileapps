@@ -7,4 +7,6 @@
     <string name="block_on_a_schedule">Block on a schedule</string>
     <string name="restrict_daily_usage">Set daily usage limit</string>
     <string name="apply_custom_session_restriction">Set custom session limit</string>
+    <string name="warning_url">This option does not support URLs. Please remove any URL items from the selection.</string>
+    <string name="error_time_limit_zero">Time limit cannot be zero minutes.</string>
 </resources>
