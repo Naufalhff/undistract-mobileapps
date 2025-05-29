@@ -45,7 +45,7 @@ class AppAccessibilityService : AccessibilityService() {
     private var urlDetectionHandler: Handler? = null
 
     // Ignore ketika user mengetik
-    val keyboardPackages = listOf(
+    private val keyboardPackages = listOf(
         "com.google.android.inputmethod.latin",
         "com.microsoft.swiftkey",
         "com.samsung.android.honeyboard"
@@ -138,9 +138,8 @@ class AppAccessibilityService : AccessibilityService() {
                 visitedUrlsManager.resetState()
             }
 
-            val currentIdentifier = packageName
-            Log.d("CurrentIdentifier", "Identifier: $currentIdentifier")
-            handleAppBlocking(currentIdentifier, currentTime)
+            Log.d("CurrentIdentifier", "Identifier: $packageName")
+            handleAppBlocking(packageName, currentTime)
         }
     }
 
@@ -151,6 +150,7 @@ class AppAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        visitedUrlsManager.cleanup()
         visitedUrlsManager.stopPolling()
     }
 

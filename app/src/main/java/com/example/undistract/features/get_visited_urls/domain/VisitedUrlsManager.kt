@@ -2,7 +2,6 @@ package com.example.undistract.features.get_visited_urls.domain
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -11,6 +10,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -34,6 +34,12 @@ class VisitedUrlsManager (
     private var urlDetectionRunnable: Runnable? = null
     var isPollingUrl: Boolean = false
         private set
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    fun cleanup() {
+        job.cancel() // Panggil ini saat Service dihentikan
+    }
 
     fun processNodeTree(
         node: AccessibilityNodeInfo?,
@@ -118,59 +124,46 @@ class VisitedUrlsManager (
         return null
     }
 
-    // Metode untuk menormalisasi URL sebelum menyimpan ke database
-    fun normalizeUrl(url: String): String {
-        // Case 1: URL dengan protokol lengkap
-        if (url.startsWith("http://", ignoreCase = true) ||
-            url.startsWith("https://", ignoreCase = true))
-        {
-            return try {
-                val parsedUrl = URL(
-                    if (url.startsWith("http://", true) || url.startsWith("https://", true)) url
-                    else "https://$url" // Tambahkan protokol kalau belum ada agar bisa diparse
-                )
-
-                var host = parsedUrl.host.lowercase()
-
-                // Hapus www. atau m. di depan
-                if (host.startsWith("www.") || host.startsWith("m.")) {
-                    host = host.substringAfter(".")
-                }
-
-                return host
-            } catch (e: Exception) {
-                try {
-                    val uri = Uri.parse(url)
-                    var host = uri.host?.lowercase() ?: return url
-
-                    if (host.startsWith("www.") || host.startsWith("m.")) {
-                        host = host.substringAfter(".")
-                    }
-
-                    return host
-                } catch (e: Exception) {
-                    return url // Kembalikan original jika semua gagal
-                }
-            }
+    private fun normalizeUrl(url: String): String {
+        val cleanedUrl = url.trim().replace("\\", "/")
+        val finalUrl = if (cleanedUrl.startsWith("http://", true) || cleanedUrl.startsWith("https://", true)) {
+            cleanedUrl
+        } else {
+            "https://$cleanedUrl"
         }
-        // Case 2: Domain tanpa protokol
-        else {
-            // Hilangkan www jika ada
-            var normalizedUrl = url
-            if (normalizedUrl.startsWith("www.")) {
-                normalizedUrl = normalizedUrl.substring(4)
-            } else if (normalizedUrl.startsWith("m.")) {
-                normalizedUrl = normalizedUrl.substring(2)
+
+        return try {
+            val parsedUrl = URL(finalUrl)
+            var host = parsedUrl.host.lowercase()
+
+            if (host.startsWith("www.") || host.startsWith("m.")) {
+                host = host.substringAfter(".")
             }
 
-            // Jika ini adalah domain terkenal, gunakan domain saja
+            host // ← ini sudah cukup, return akan mengambil nilai terakhir dari blok try
+        } catch (e: Exception) {
+            var normalizedUrl = cleanedUrl
+
+            if (normalizedUrl.startsWith("http://", true)) {
+                normalizedUrl = normalizedUrl.removePrefix("http://")
+            } else if (normalizedUrl.startsWith("https://", true)) {
+                normalizedUrl = normalizedUrl.removePrefix("https://")
+            }
+
+            normalizedUrl = normalizedUrl.split("/", "?", "#").firstOrNull()?.lowercase() ?: return url
+
+            if (normalizedUrl.startsWith("www.")) {
+                normalizedUrl = normalizedUrl.substringAfter(".")
+            } else if (normalizedUrl.startsWith("m.")) {
+                normalizedUrl = normalizedUrl.substringAfter(".")
+            }
+
             if (isWellKnownDomain(normalizedUrl)) {
-                // Jika ini domain terkenal yang ada path atau query, potong hanya ambil domain
                 val domainOnly = normalizedUrl.split("/").firstOrNull()
                 return domainOnly ?: normalizedUrl
             }
 
-            return normalizedUrl
+            normalizedUrl
         }
     }
 
@@ -213,17 +206,32 @@ class VisitedUrlsManager (
                 domain.endsWith(".$it", ignoreCase = true) }
     }
 
-    suspend fun downloadFavicon(url: String): ByteArray? = withContext(Dispatchers.IO) {
+    private suspend fun downloadFavicon(url: String): ByteArray? = withContext(Dispatchers.IO) {
         try {
-            val parsedUrl = URL(url)
+            var fixedUrl = url
+            if (!fixedUrl.startsWith("http://") && !fixedUrl.startsWith("https://")) {
+                fixedUrl = "https://$fixedUrl"
+            }
+            Log.d("FaviconDownloader", "Fixed URL: $fixedUrl")
+
+            val parsedUrl = URL(fixedUrl)
             val faviconUrl = "${parsedUrl.protocol}://${parsedUrl.host}/favicon.ico"
+            Log.d("FaviconDownloader", "Trying to fetch favicon from: $faviconUrl")
+
             val inputStream = URL(faviconUrl).openStream()
             val bitmap = BitmapFactory.decodeStream(inputStream)
+
+            if (bitmap == null) {
+                Log.w("FaviconDownloader", "Bitmap is null - favicon might not exist or be invalid.")
+                return@withContext null
+            }
+
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            Log.d("FaviconDownloader", "Favicon successfully downloaded and converted.")
             outputStream.toByteArray()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("FaviconDownloader", "Error downloading favicon: ${e.message}", e)
             null
         }
     }
@@ -248,12 +256,10 @@ class VisitedUrlsManager (
 
                 getRootNode()?.let { root ->
                     var foundUrl: String? = null
-                    var rawUrl: String? = null
 
-                    processNodeTree(root) { raw, normalized ->
+                    processNodeTree(root) { _, normalized ->
                         if (foundUrl == null) {
                             foundUrl = normalized
-                            rawUrl = raw
                         }
                     }
 
@@ -294,7 +300,7 @@ class VisitedUrlsManager (
             Log.d("UrlDetection", "URL stable: $detectedUrl (count: $urlConfirmationCount)")
 
             if (urlConfirmationCount == urlConfirmationThreshold) {
-                CoroutineScope(Dispatchers.IO).launch {
+                scope.launch {
                     val favicon = downloadFavicon(detectedUrl)
                     visitedUrlsRepository.insertUrl(detectedUrl, favicon)
                 }
