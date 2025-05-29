@@ -36,11 +36,8 @@ class VisitedUrlsManager (
     var isPollingUrl: Boolean = false
         private set
     private val job = SupervisorJob()
+    private var isCleanedUp = false
     private val scope = CoroutineScope(Dispatchers.IO + job)
-
-    fun cleanup() {
-        job.cancel() // Panggil ini saat Service dihentikan
-    }
 
     fun processNodeTree(
         node: AccessibilityNodeInfo?,
@@ -329,5 +326,16 @@ class VisitedUrlsManager (
             lastDetectedUrl = detectedUrl
             urlConfirmationCount = 1
         }
+    }
+
+    fun shutdown() {
+        stopPolling()
+        cleanup()
+    }
+
+    private fun cleanup() {
+        if (isCleanedUp) return
+        isCleanedUp = true
+        job.cancel()
     }
 }

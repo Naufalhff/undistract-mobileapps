@@ -71,11 +71,10 @@ class AppAccessibilityService : AccessibilityService() {
         variableSessionManager = VariableSessionManager(this, variableSessionDao)
         variableSessionRepository = VariableSessionRepository(variableSessionDao)
         variableSessionViewModel = VariableSessionViewModel(variableSessionRepository)
-        visitedUrlsManager = VisitedUrlsManager (
+        visitedUrlsManager = VisitedUrlsManager(
             visitedUrlsRepository,
-            ::handleAppBlocking,
-            { rootInActiveWindow }
-        )
+            ::handleAppBlocking
+        ) { rootInActiveWindow }
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -141,17 +140,6 @@ class AppAccessibilityService : AccessibilityService() {
             Log.d("CurrentIdentifier", "Identifier: $packageName")
             handleAppBlocking(packageName, currentTime)
         }
-    }
-
-    override fun onInterrupt() {
-        Log.d("BlockApp", "Service terputus!")
-        visitedUrlsManager.stopPolling()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        visitedUrlsManager.cleanup()
-        visitedUrlsManager.stopPolling()
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
@@ -240,5 +228,15 @@ class AppAccessibilityService : AccessibilityService() {
                 Log.d("AccessibilityService", "Blocked apps not initialized yet.")
             }
         }
+    }
+
+    override fun onInterrupt() {
+        Log.d("BlockApp", "Service terputus sementara!")
+        visitedUrlsManager.stopPolling()
+    }
+
+    override fun onDestroy() {
+        Log.d("BlockApp", "Service dihentikan permanen!")
+        visitedUrlsManager.shutdown()
     }
 }
