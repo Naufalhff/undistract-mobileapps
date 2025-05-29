@@ -36,10 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
+import com.example.undistract.R
 import com.example.undistract.features.get_app_data.domain.AppOrUrlItem
 import com.example.undistract.ui.components.BackButton
 
@@ -87,7 +89,7 @@ fun SelectAppsScreen(
             Spacer(modifier = Modifier.width(16.dp))
 
             Text(
-                text = "Select Apps",
+                text = stringResource(id = R.string.select_apps),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -99,11 +101,11 @@ fun SelectAppsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("Search apps") },
+            placeholder = { Text(stringResource(R.string.placeholder_search_apps)) },
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "Search Icon"
+                    contentDescription = null
                 )
             },
             singleLine = true,

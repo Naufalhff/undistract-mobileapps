@@ -14,10 +14,7 @@ class SelectAppsViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SelectAppsViewModel::class.java)) {
-            // Membuat repository untuk aplikasi yang diinstal dengan VisitedUrlsRepository
             val appDataRepository = AppDataRepository(context, visitedUrlsRepository)
-
-            // Membuat ViewModel dan memberikan parameter yang diperlukan
             @Suppress("UNCHECKED_CAST")
             return SelectAppsViewModel(appDataRepository, selectAppsRepository) as T
         }

@@ -7,6 +7,8 @@
     <string name="block_on_a_schedule">Block on a schedule</string>
     <string name="restrict_daily_usage">Set daily usage limit</string>
     <string name="apply_custom_session_restriction">Set custom session limit</string>
+    <string name="select_apps">Select Apps</string>
+    <string name="placeholder_search_apps">Search apps</string>
     <string name="blocked_app_message">Permanently blocked apps cannot be opened at all until you disable the block.</string>
     <string name="warning_url">This option does not support URLs. Please remove any URL items from the selection.</string>
     <string name="error_time_limit_zero">Time limit cannot be zero minutes.</string>
