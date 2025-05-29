@@ -1,9 +1,7 @@
 package com.example.undistract.features.select_apps.presentation
 
-import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.undistract.features.get_app_data.data.AppDataRepository
@@ -13,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class SelectAppsViewModel(
@@ -20,11 +19,13 @@ class SelectAppsViewModel(
     private val selectAppsRepository: SelectAppsRepository
 ) : ViewModel() {
 
-    private val _combinedItems = MutableStateFlow<List<AppOrUrlItem>>(emptyList())
-    val combinedItems: StateFlow<List<AppOrUrlItem>> = _combinedItems.asStateFlow()
-
-    // State map untuk UI
     val selectedApps = mutableStateMapOf<String, Boolean>()
+
+    private val _combinedItems = MutableStateFlow<List<AppOrUrlItem>>(emptyList())
+    val combinedItems: StateFlow<List<AppOrUrlItem>> = _combinedItems
+
+    private val _isSelectAll = MutableStateFlow(false)
+    val isSelectAll: StateFlow<Boolean> = _isSelectAll
 
     private val _selectedNotificationType = MutableStateFlow("Head Notification")
     val selectedNotificationType: StateFlow<String> = _selectedNotificationType.asStateFlow()
@@ -32,7 +33,17 @@ class SelectAppsViewModel(
     init {
         loadCombinedItems()
 
-        // Observer perubahan dari repository
+        viewModelScope.launch {
+            snapshotFlow { selectedApps.toMap() }
+                .combine(_combinedItems) { selectedMap, items ->
+                    if (items.isEmpty()) false
+                    else items.all { selectedMap[it.identifier] == true }
+                }
+                .collectLatest {
+                    _isSelectAll.value = it
+                }
+        }
+
         viewModelScope.launch {
             selectAppsRepository.selectedApps.collectLatest { selectedAppsMap ->
                 selectedAppsMap.forEach { (identifier, isSelected) ->
@@ -44,18 +55,22 @@ class SelectAppsViewModel(
 
     private fun loadCombinedItems() {
         viewModelScope.launch {
-            // Dapatkan data aplikasi dan URL dari repository
             val items = appDataRepository.getCombinedList()
-
-            // Gabungkan aplikasi dan URL
             val combined = items.sortedBy { it.name }
 
             _combinedItems.value = combined
 
-            // Set status pilihan untuk setiap item
             combined.forEach { item ->
                 selectedApps[item.identifier] = selectAppsRepository.isAppSelected(item.identifier)
             }
+        }
+    }
+
+    fun toggleSelectAll(identifiers: List<String>) {
+        val shouldSelectAll = !identifiers.all { selectedApps[it] == true }
+
+        identifiers.forEach { id ->
+            selectedApps[id] = shouldSelectAll
         }
     }
 
