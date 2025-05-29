@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.time.LocalTime
@@ -212,26 +213,42 @@ class VisitedUrlsManager (
             if (!fixedUrl.startsWith("http://") && !fixedUrl.startsWith("https://")) {
                 fixedUrl = "https://$fixedUrl"
             }
-            Log.d("FaviconDownloader", "Fixed URL: $fixedUrl")
 
-            val parsedUrl = URL(fixedUrl)
-            val faviconUrl = "${parsedUrl.protocol}://${parsedUrl.host}/favicon.ico"
-            Log.d("FaviconDownloader", "Trying to fetch favicon from: $faviconUrl")
+            val baseUri = URL(fixedUrl)
+            val doc = Jsoup.connect(fixedUrl).get()
 
-            val inputStream = URL(faviconUrl).openStream()
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+            // Prioritaskan rel icon
+            val iconElements = doc.select("link[rel~=(?i)^icon$], link[rel~=(?i)^apple-touch-icon$]")
+            val iconUrls = iconElements
+                .mapNotNull { it.attr("href") }
+                .map { href -> URL(baseUri, href).toString() }
 
-            if (bitmap == null) {
-                Log.w("FaviconDownloader", "Bitmap is null - favicon might not exist or be invalid.")
-                return@withContext null
+            // Tambahkan fallback URL
+            iconUrls.plus(
+                listOf(
+                    "${baseUri.protocol}://${baseUri.host}/apple-touch-icon.png",
+                    "${baseUri.protocol}://${baseUri.host}/android-chrome-192x192.png",
+                    "${baseUri.protocol}://${baseUri.host}/favicon.ico"
+                )
+            ).forEach { iconUrl ->
+                try {
+                    val inputStream = URL(iconUrl).openStream()
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    if (bitmap != null) {
+                        val outputStream = ByteArrayOutputStream()
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                        Log.d("FaviconDownloader", "Downloaded from: $iconUrl")
+                        return@withContext outputStream.toByteArray()
+                    }
+                } catch (e: Exception) {
+                    Log.w("FaviconDownloader", "Failed to load favicon from: $iconUrl")
+                }
             }
 
-            val outputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-            Log.d("FaviconDownloader", "Favicon successfully downloaded and converted.")
-            outputStream.toByteArray()
+            Log.w("FaviconDownloader", "No valid favicon found.")
+            null
         } catch (e: Exception) {
-            Log.e("FaviconDownloader", "Error downloading favicon: ${e.message}", e)
+            Log.e("FaviconDownloader", "Error: ${e.message}", e)
             null
         }
     }
