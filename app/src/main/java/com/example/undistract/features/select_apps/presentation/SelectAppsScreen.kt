@@ -59,13 +59,17 @@ fun SelectAppsScreen(
 
     var searchQuery by remember { mutableStateOf("") }
 
+    val selectedAppsMap = viewModel.selectedApps
+
+    val selectedCount = selectedAppsMap.count { it.value }
+
     val filteredItems = if (searchQuery.isBlank()) {
         combinedItems
     } else {
         combinedItems.filter {
             it.name.contains(searchQuery, ignoreCase = true)
         }
-    }
+    }.sortedByDescending { selectedAppsMap[it.identifier] == true }
 
     Column(
         modifier = Modifier
@@ -130,7 +134,7 @@ fun SelectAppsScreen(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "Select All",
+                text = stringResource(id = R.string.select_all_with_count, selectedCount),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1
@@ -149,9 +153,6 @@ fun SelectAppsScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // LIST OF FILTERED ITEMS
-        val selectedAppsMap = viewModel.selectedApps
 
         LazyColumn(
             modifier = Modifier

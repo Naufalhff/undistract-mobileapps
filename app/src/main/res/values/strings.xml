@@ -10,6 +10,7 @@
     <string name="apply_custom_session_restriction">Set custom session limit</string>
     <string name="select_apps">Select Apps</string>
     <string name="placeholder_search_apps">Search apps</string>
+    <string name="select_all_with_count">Select All (%1$d selected)</string>
     <string name="blocked_app_message">Permanently blocked apps cannot be opened at all until you disable the block.</string>
     <string name="selected_multiple_apps">%1$s &amp; … other</string>
     <string name="toast_schedule_data_incomplete">Schedule data is incomplete</string>
