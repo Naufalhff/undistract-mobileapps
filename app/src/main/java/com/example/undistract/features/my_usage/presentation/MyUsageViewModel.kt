@@ -114,13 +114,11 @@ class MyUsageViewModel(private val context: Context) : ViewModel() {
 
             val hourlyData = usageStatsManager.getHourlyUsageToday()
 
-            // Convert to list of HourlyUsageData objects
-            val hourlyUsageList = mutableListOf<HourlyUsageData>()
-
-            // Ensure we have data for all hours (0-23)
-            for (hour in 0..23) {
-                val usageTime = hourlyData[hour] ?: 0L
-                hourlyUsageList.add(HourlyUsageData(hour, usageTime))
+            // Konversi data penggunaan per jam
+            val hourlyUsageList = (0..23).map { hour ->
+                // Ambil data penggunaan untuk setiap jam, default 0 jika tidak ada data
+                val usageTime = hourlyData[hour + 1] ?: 0L
+                HourlyUsageData(hour, usageTime)
             }
 
             _hourlyUsageData.value = hourlyUsageList

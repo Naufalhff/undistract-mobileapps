@@ -78,7 +78,7 @@ fun UsageBarChart(
                     valueFormatter = object : ValueFormatter() {
                         override fun getFormattedValue(value: Float): String {
                             return if (value.toInt() in 0..23) {
-                                value.toInt().toString()
+                                "%02d".format(value.toInt())
                             } else {
                                 ""
                             }
@@ -110,20 +110,19 @@ fun UsageBarChart(
             }
         },
         update = { chart ->
-            // Filter data to show a limited set of hours - based on the screenshot (around 5-20)
-            val filteredData = hourlyData.filter { it.hour in 5..20 }
-                .sortedBy { it.hour }
+            // Gunakan semua data jam dari 0-23
+            val filteredData = hourlyData.sortedBy { it.hour }
 
-            // Convert entries for bar chart
+            // Konversi entri untuk bar chart
             val barEntries = filteredData.map { hourData ->
                 val hour = hourData.hour
                 val minutes = TimeUnit.MILLISECONDS.toMinutes(hourData.usageTimeInMillis).toFloat()
                 BarEntry(hour.toFloat(), minutes)
             }
 
-            // Create the dataset
+            // Buat dataset
             val barDataSet = BarDataSet(barEntries, "Usage Time").apply {
-                color = Color(0xFF8A65F6).toArgb() // Purple color
+                color = Color(0xFF8A65F6).toArgb() // Warna ungu
                 valueTextSize = 10f
                 valueTextColor = AndroidColor.GRAY
                 valueFormatter = object : ValueFormatter() {
@@ -134,26 +133,29 @@ fun UsageBarChart(
                 setDrawValues(true)
             }
 
-            // Update chart data
+            // Update data chart
             chart.data = BarData(barDataSet).apply {
-                barWidth = 0.5f // Thinner bars like in screenshot
+                barWidth = 0.8f // Lebar bar yang lebih lebar
             }
 
-            // Calculate Y-axis max value
+            // Hitung nilai maksimum sumbu Y
             val maxUsage = barEntries.maxOfOrNull { it.y } ?: 50f
-            chart.axisLeft.axisMaximum = maxUsage * 1.2f
-
-            // Set X-axis range to show the right hours
-            chart.xAxis.apply {
-                axisMinimum = 4.5f
-                axisMaximum = 20.5f
-                labelCount = 16 // Show all hour labels
+            chart.axisLeft.apply {
+                axisMaximum = maxUsage * 1.2f
+                axisMinimum = 0f
             }
 
-            // Custom value positioning
+            // Atur rentang sumbu X untuk menampilkan semua jam
+            chart.xAxis.apply {
+                axisMinimum = -0.5f
+                axisMaximum = 23.5f
+                labelCount = 24 // Tampilkan label untuk setiap jam
+            }
+
+            // Sesuaikan posisi nilai
             chart.setDrawValueAboveBar(true)
 
-            // Refresh the chart
+            // Refresh chart
             chart.invalidate()
         }
     )
@@ -192,8 +194,8 @@ fun UsageLineChart(
                     granularity = 1f
                     valueFormatter = object : ValueFormatter() {
                         override fun getFormattedValue(value: Float): String {
-                            return if (value.toInt() in 5..20) {
-                                value.toInt().toString()
+                            return if (value.toInt() in 0..23) {
+                                "%02d".format(value.toInt())
                             } else {
                                 ""
                             }
@@ -225,20 +227,19 @@ fun UsageLineChart(
             }
         },
         update = { chart ->
-            // Filter data to show hours 5-20 as in screenshot
-            val filteredData = hourlyData.filter { it.hour in 5..20 }
-                .sortedBy { it.hour }
+            // Gunakan semua data jam dari 0-23
+            val filteredData = hourlyData.sortedBy { it.hour }
 
-            // Prepare data entries with converted minutes
+            // Siapkan entri data dengan konversi menit
             val entries = filteredData.map { hourData ->
                 val hour = hourData.hour.toFloat()
                 val minutes = TimeUnit.MILLISECONDS.toMinutes(hourData.usageTimeInMillis).toFloat()
                 Entry(hour, minutes)
             }
 
-            // Create dataset
+            // Buat dataset
             val dataSet = LineDataSet(entries, "Usage Time").apply {
-                color = Color(0xFF8A65F6).toArgb() // Purple color
+                color = Color(0xFF8A65F6).toArgb() // Warna ungu
                 lineWidth = 2.5f
                 setDrawCircles(true)
                 setDrawCircleHole(true)
@@ -246,7 +247,7 @@ fun UsageLineChart(
                 circleHoleRadius = 2f
                 setCircleColor(Color(0xFF8A65F6).toArgb())
 
-                // Format values to show minutes
+                // Format nilai untuk menampilkan menit
                 valueTextSize = 10f
                 valueTextColor = AndroidColor.GRAY
                 setDrawValues(true)
@@ -256,23 +257,29 @@ fun UsageLineChart(
                     }
                 }
 
-                // Add highlight marker
+                // Tambahkan penanda sorotan
                 setDrawHighlightIndicators(true)
                 highlightLineWidth = 1f
             }
 
-            // Update chart data
+            // Update data chart
             chart.data = LineData(dataSet)
 
-            // Calculate Y-axis max value
+            // Hitung nilai maksimum sumbu Y
             val maxUsage = entries.maxOfOrNull { it.y } ?: 50f
-            chart.axisLeft.axisMaximum = maxUsage * 1.2f
+            chart.axisLeft.apply {
+                axisMaximum = maxUsage * 1.2f
+                axisMinimum = 0f
+            }
 
-            // Set X-axis range
-            chart.xAxis.axisMinimum = 4.5f
-            chart.xAxis.axisMaximum = 20.5f
+            // Atur rentang sumbu X
+            chart.xAxis.apply {
+                axisMinimum = -0.5f
+                axisMaximum = 23.5f
+                labelCount = 24 // Tampilkan label untuk setiap jam
+            }
 
-            // Refresh the chart
+            // Refresh chart
             chart.invalidate()
         }
     )
