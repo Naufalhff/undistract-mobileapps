@@ -432,42 +432,49 @@ fun AddRestrictionScreen(navController: NavHostController, isParental: Boolean =
                         }
 
                         "daily_limit" -> {
-                            val data = addLimitViewModel.dailyLimitData.value
-
-                            try {
-                                if (data != null) {
-                                    if (data.timeLimitMinutes == 0) {
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(R.string.error_time_limit_zero),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-
-                                    setaDailyLimitViewModel.saveDailyLimits(data = data,
-                                        usageLimitViewModel = usageLimitViewModel,
-                                        onSuccess = {
-                                            if (isParental) {
-                                                navController.navigate("parental_usage_limit?isParental=true") {
-                                                    launchSingleTop = true
-                                                }
-                                            } else {
-                                                navController.navigate(BottomNavItem.UsageLimit.route) {
-                                                    launchSingleTop = true
-                                                }
-                                            }
+                            if (containsUrlItem) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.warning_url),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }else {
+                                val data = addLimitViewModel.dailyLimitData.value
+                                try {
+                                    if (data != null) {
+                                        if (data.timeLimitMinutes == 0) {
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.toast_save_success),
+                                                context.getString(R.string.error_time_limit_zero),
                                                 Toast.LENGTH_SHORT
                                             ).show()
-                                        },
-                                        onError = { _ ->
-                                            Log.e("SetDailyLimit", "Failed to save")
-                                        })
+                                        }
+
+                                        setaDailyLimitViewModel.saveDailyLimits(data = data,
+                                            usageLimitViewModel = usageLimitViewModel,
+                                            onSuccess = {
+                                                if (isParental) {
+                                                    navController.navigate("parental_usage_limit?isParental=true") {
+                                                        launchSingleTop = true
+                                                    }
+                                                } else {
+                                                    navController.navigate(BottomNavItem.UsageLimit.route) {
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.toast_save_success),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            },
+                                            onError = { _ ->
+                                                Log.e("SetDailyLimit", "Failed to save")
+                                            })
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("AddLimitScreen", "Exception saving daily limits", e)
                                 }
-                            } catch (e: Exception) {
-                                Log.e("AddLimitScreen", "Exception saving daily limits", e)
                             }
                         }
 

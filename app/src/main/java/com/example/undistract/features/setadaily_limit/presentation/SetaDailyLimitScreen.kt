@@ -68,6 +68,7 @@ fun SetDailyUsageLimitScreen(
 
     // Update selected notification type in ViewModel
     LaunchedEffect(selectedDisruptionOption) {
+        Log.d("SetDailyLimit", "Selected notification type changed to: $selectedDisruptionOption")
         selectAppsViewModel.updateSelectedNotificationType(selectedDisruptionOption)
     }
 

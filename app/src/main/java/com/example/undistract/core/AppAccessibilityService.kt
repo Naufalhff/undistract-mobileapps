@@ -15,6 +15,10 @@ import com.example.undistract.features.block_permanent.domain.BlockPermanentMana
 import com.example.undistract.features.block_schedules.domain.BlockScheduleManager
 import com.example.undistract.features.get_visited_urls.data.VisitedUrlsRepository
 import com.example.undistract.features.get_visited_urls.domain.VisitedUrlsManager
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import com.example.undistract.features.usage_limit.presentation.DailyLimitDialogActivity
+import com.example.undistract.features.usage_stats.UsageStatsManager
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.variable_session.domain.VariableSessionManager
 import com.example.undistract.features.variable_session.presentation.VariableSessionDialogActivity
@@ -36,6 +40,8 @@ class AppAccessibilityService : AccessibilityService() {
     private lateinit var variableSessionRepository: VariableSessionRepository
     private lateinit var variableSessionViewModel: VariableSessionViewModel
     private lateinit var blockPermanentRepository: BlockPermanentRepository
+    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
+    private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var blockedApps: List<BlockPermanentEntity>
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastPackageName: String? = null
@@ -51,6 +57,24 @@ class AppAccessibilityService : AccessibilityService() {
         "com.samsung.android.honeyboard"
     )
 
+    private val browserPackages = setOf(
+        "com.android.chrome",
+        "org.mozilla.firefox",
+        "com.microsoft.emmx",
+        "com.brave.browser",
+        "com.sec.android.app.sbrowser",
+        "com.opera.browser",
+        "com.opera.mini.native",
+        "com.UCMobile.intl",
+        "com.duckduckgo.mobile.android",
+        "com.vivaldi.browser",
+        "com.kiwibrowser.browser",
+        "com.yandex.browser",
+        "org.torproject.torbrowser",
+        "com.cloudmosa.puffinFree",
+        "com.transsion.phoenix"
+    )
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         Log.d("ACCESSIBILITY_SERVICE", "Service connected")
@@ -61,9 +85,11 @@ class AppAccessibilityService : AccessibilityService() {
         val blockPermanentDao = database.blockPermanentDao()
         val blockSchedulesDao = database.blockSchedulesDao()
         val variableSessionDao = database.variableSessionDao()
+        val setaDailyLimitDao = database.setaDailyLimitDao()
 
         blockPermanentRepository = BlockPermanentRepository(blockPermanentDao)
         visitedUrlsRepository = VisitedUrlsRepository(visitedUrlsDao)
+        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(setaDailyLimitDao)
 
         // Inisialisasi manager
         blockPermanentManager = BlockPermanentManager()
@@ -75,6 +101,7 @@ class AppAccessibilityService : AccessibilityService() {
             visitedUrlsRepository,
             ::handleAppBlocking
         ) { rootInActiveWindow }
+        usageStatsManager = UsageStatsManager(this)
         loadBlockedApps()
 
         // Setup service info untuk accessibility service
@@ -93,36 +120,75 @@ class AppAccessibilityService : AccessibilityService() {
         event ?: return
 
         val packageName = event.packageName?.toString() ?: return
+        Log.d("ACCESSIBILITY_EVENT", "Processing event for package: $packageName, eventType: ${event.eventType}")
 
-        val supportedEvents =
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                    AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                    AccessibilityEvent.TYPE_VIEW_SCROLLED or
-                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
-                    AccessibilityEvent.TYPE_VIEW_FOCUSED
+        if (packageName == this.packageName) {
+            Log.d("ACCESSIBILITY_EVENT", "Skipping Undistract app: $packageName")
+            return
+        }
 
-        val browserPackages = setOf(
-            "com.android.chrome",
-            "org.mozilla.firefox",
-            "com.microsoft.emmx",
-            "com.brave.browser",
-            "com.sec.android.app.sbrowser",
-            "com.opera.browser",
-            "com.opera.mini.native",
-            "com.UCMobile.intl",
-            "com.duckduckgo.mobile.android",
-            "com.vivaldi.browser",
-            "com.kiwibrowser.browser",
-            "com.yandex.browser",
-            "org.torproject.torbrowser",
-            "com.cloudmosa.puffinFree",
-            "com.transsion.phoenix"
-        )
+        if (packageName in keyboardPackages) return
+
+        // Check daily limit first
+        serviceScope.launch {
+            val limit = setaDailyLimitRepository.getByPackageName(packageName)
+            if (limit != null) {
+                Log.d("ACCESSIBILITY_EVENT", "Checking daily limit for $packageName")
+                val usageTimeMinutes = usageStatsManager.getAppUsageTimeToday(packageName)
+                Log.d("ACCESSIBILITY_EVENT", "Usage time for $packageName: $usageTimeMinutes minutes, limit: ${limit.timeLimitMinutes}")
+
+                if (usageTimeMinutes >= limit.timeLimitMinutes && limit.isActive) {
+                    Log.d("ACCESSIBILITY_EVENT", "App $packageName has reached daily limit")
+                    when (limit.notificationType) {
+                        "Block Application" -> {
+                            Log.d("ACCESSIBILITY_EVENT", "Blocking application: ${limit.appName}")
+                            withContext(Dispatchers.Main) {
+                                val intent = Intent(Intent.ACTION_MAIN).apply {
+                                    addCategory(Intent.CATEGORY_HOME)
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                try {
+                                    startActivity(intent)
+                                    Toast.makeText(this@AppAccessibilityService, "App ${limit.appName} is blocked!", Toast.LENGTH_LONG).show()
+                                } catch (e: Exception) {
+                                    Log.e("ACCESSIBILITY_EVENT", "Failed to block app: ${e.message}")
+                                }
+                            }
+                            return@launch
+                        }
+                        "Pop Up Notification" -> {
+                            Log.d("ACCESSIBILITY_EVENT", "Showing pop-up for ${limit.appName}")
+                            withContext(Dispatchers.Main) {
+                                val intent = Intent(this@AppAccessibilityService, DailyLimitDialogActivity::class.java).apply {
+                                    putExtra("APP_NAME", limit.appName)
+                                    putExtra("PACKAGE_NAME", packageName)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                try {
+                                    startActivity(intent)
+                                } catch (e: Exception) {
+                                    Log.e("ACCESSIBILITY_EVENT", "Failed to start DailyLimitDialogActivity: ${e.message}")
+                                }
+                            }
+                            return@launch
+                        }
+                        "Head Notification" -> {
+                            Log.d("ACCESSIBILITY_EVENT", "Skipping dialog for Head Notification type: ${limit.appName}")
+                            return@launch
+                        }
+                    }
+                }
+            }
+        }
+
+        val supportedEvents = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_SCROLLED or
+                AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_FOCUSED
 
         if ((event.eventType and supportedEvents) != 0) {
             val currentTime = LocalTime.now()
-
-            if (packageName in keyboardPackages) return
 
             if (packageName in browserPackages) {
                 handleAppBlocking(packageName, currentTime)
@@ -130,7 +196,6 @@ class AppAccessibilityService : AccessibilityService() {
                 if (!isPollingUrl) {
                     visitedUrlsManager.startPolling()
                 }
-
                 return
             } else {
                 visitedUrlsManager.stopPolling()
@@ -188,7 +253,11 @@ class AppAccessibilityService : AccessibilityService() {
                         putExtra("PACKAGE_NAME", currentIdentifier)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    startActivity(intent)
+                    try {
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e("ACCESSIBILITY_EVENT", "Failed to start VariableSessionDialogActivity: ${e.message}")
+                    }
                 }
             }
 
@@ -197,7 +266,6 @@ class AppAccessibilityService : AccessibilityService() {
                     lastPackageName?.let { previousPackage ->
                         variableSessionManager.stopTimer(previousPackage, variableSessionViewModel)
                     }
-
                     variableSessionManager.startTimer(currentIdentifier, variableSessionViewModel, this@AppAccessibilityService)
                     lastPackageName = currentIdentifier
                 }
@@ -212,7 +280,6 @@ class AppAccessibilityService : AccessibilityService() {
 
             // BLOCK PERMANENT
             Log.d("AccessibilityService", "Checking if $currentIdentifier is blocked...")
-
             if (::blockedApps.isInitialized) {
                 if (isAppBlocked(currentIdentifier)) {
                     val appName = getAppName(currentIdentifier)

@@ -1,5 +1,6 @@
 package com.example.undistract.features.select_apps.presentation
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -91,6 +92,7 @@ class SelectAppsViewModel(
     }
 
     fun updateSelectedNotificationType(notificationType: String) {
+        Log.d("SelectAppsViewModel", "Updating notification type to: $notificationType")
         _selectedNotificationType.value = notificationType
     }
 }

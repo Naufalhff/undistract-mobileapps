@@ -14,37 +14,66 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import com.example.undistract.ui.theme.Purple40
+import com.example.undistract.features.usage_stats.UsageStatsManager
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepository
+import com.example.undistract.config.AppDatabase
+import com.example.undistract.features.setadaily_limit.data.SetaDailyLimitRepositoryImpl
+import kotlinx.coroutines.launch
 
 class DailyLimitDialogActivity : ComponentActivity() {
+
+    private lateinit var setaDailyLimitRepository: SetaDailyLimitRepository
+    private lateinit var usageStatsManager: UsageStatsManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Cek apakah aplikasi yang mencapai batas adalah Undistract
-        val packageName = intent.getStringExtra("PACKAGE_NAME")
-        if (packageName == this.packageName) {
-            Log.d("DailyLimitDialogActivity", "Aplikasi Undistract mencapai batas, tutup aktivitas")
-            finish()
-            return
-        }
+        // Inisialisasi database dan repository
+        val database = AppDatabase.getDatabase(this)
+        setaDailyLimitRepository = SetaDailyLimitRepositoryImpl(database.setaDailyLimitDao())
+        usageStatsManager = UsageStatsManager(this)
 
-        setContent {
-            DailyLimitDialogContent(
-                appName = intent.getStringExtra("APP_NAME") ?: "this app",
-                onDismiss = {
-                    closeApp(packageName)
+        // Tambahkan log untuk debugging
+        Log.d("DailyLimitDialogActivity", "Activity created")
+
+        val packageName = intent.getStringExtra("PACKAGE_NAME")
+        val appName = intent.getStringExtra("APP_NAME") ?: "this app"
+
+        // Periksa ulang batas penggunaan saat dialog dibuka
+        lifecycleScope.launch {
+            val limit = setaDailyLimitRepository.getByPackageName(packageName ?: "")
+            if (limit != null) {
+                val usageTimeMinutes = usageStatsManager.getAppUsageTimeToday(packageName ?: "")
+                
+                if (usageTimeMinutes >= limit.timeLimitMinutes) {
+                    setContent {
+                        DailyLimitDialogContent(
+                            appName = appName,
+                            onDismiss = {
+                                // Reset cache penggunaan untuk aplikasi ini
+                                usageStatsManager.clearCacheFor(packageName ?: "")
+                                closeApp(packageName)
+                                finish()
+                            }
+                        )
+                    }
+                } else {
+                    // Jika tidak melewati batas, langsung tutup aktivitas
                     finish()
                 }
-            )
+            } else {
+                finish()
+            }
         }
     }
 
     private fun closeApp(packageName: String?) {
         if (packageName != null) {
-            // Arahkan pengguna ke layar beranda (home screen)
             val homeIntent = Intent(Intent.ACTION_MAIN)
             homeIntent.addCategory(Intent.CATEGORY_HOME)
-            homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(homeIntent)
         }
     }

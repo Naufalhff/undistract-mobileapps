@@ -101,7 +101,7 @@ class UsageMonitorService : Service() {
 
             // Get all active daily limits
             val limits = withContext(Dispatchers.IO) {
-                repository.getAllSyncNoParental()
+                repository.getAllSync(isParental = false)
             }
 
             limits.forEach { limit ->
