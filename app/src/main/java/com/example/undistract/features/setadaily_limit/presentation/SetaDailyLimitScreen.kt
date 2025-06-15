@@ -60,7 +60,7 @@ fun SetDailyUsageLimitScreen(
     var selectedMinutes by remember { mutableStateOf("5") }
     var disruptionExpanded by remember { mutableStateOf(false) }
     var selectedDisruptionOption by remember { mutableStateOf("Head Notification") }
-    val disruptionOptions = listOf("Head Notification", "Pop Up Notification", "Block Application")
+    val disruptionOptions = listOf("Head Notification", "Pop Up Notification")
 
     // Time options lists
     val hoursOptions = remember { (0..23).map { "$it hrs" } }
