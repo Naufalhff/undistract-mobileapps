@@ -109,7 +109,7 @@ interface ApiService {
 object ApiOtpClient {
     val apiService: ApiService by lazy {
         Retrofit.Builder()
-            .baseUrl("https://responsible-reprieve-production.up.railway.app")
+            .baseUrl("https://undistract-otp-api-service.up.railway.app/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
@@ -119,7 +119,7 @@ object ApiOtpClient {
 object ApiBackendClient {
     val apiService: ApiService by lazy {
         Retrofit.Builder()
-            .baseUrl("https://undistract-mobileapps-backend-production.up.railway.app")
+            .baseUrl("https://undistract-mobileapps-backend-production-e9bb.up.railway.app")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
@@ -141,7 +141,7 @@ object ApiAuthClient {
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://undistract-mobileapps-backend-production.up.railway.app")
+            .baseUrl("https://undistract-mobileapps-backend-production-e9bb.up.railway.app")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
