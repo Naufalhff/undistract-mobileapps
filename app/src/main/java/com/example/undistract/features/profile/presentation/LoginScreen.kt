@@ -165,7 +165,7 @@ fun LoginScreen() {
                     TextField(
                         value = username,
                         onValueChange = { username = it },
-                        label = { Text("Last Name") },
+                        label = { Text("Username") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
