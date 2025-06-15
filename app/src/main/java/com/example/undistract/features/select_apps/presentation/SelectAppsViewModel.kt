@@ -71,7 +71,7 @@ class SelectAppsViewModel(
                 }
             } catch (exception: Exception) {
                 Log.e("SelectAppsViewModel", "Error observing selected apps from repository", exception)
-                _errorMessage.value = "Terjadi kesalahan saat memuat data aplikasi terpilih"
+                _errorMessage.value = "An error occurred while loading selected apps data."
             }
         }
     }
@@ -88,7 +88,7 @@ class SelectAppsViewModel(
 
                 if (items.isEmpty()) {
                     Log.w("SelectAppsViewModel", "No items returned from repository")
-                    _errorMessage.value = "Tidak ada aplikasi yang ditemukan di sistem"
+                    _errorMessage.value = "No apps found in the system."
                     return@launch
                 }
 
@@ -97,7 +97,7 @@ class SelectAppsViewModel(
 
                 Log.d("SelectAppsViewModel", "Loaded ${combined.size} items successfully")
 
-                // Initialize selected apps dengan error handling
+                // Initialize selected apps with error handling
                 combined.forEach { item ->
                     try {
                         selectedApps[item.identifier] = selectAppsRepository.isAppSelected(item.identifier)
@@ -109,13 +109,13 @@ class SelectAppsViewModel(
 
             } catch (securityException: SecurityException) {
                 Log.e("SelectAppsViewModel", "Security error loading apps", securityException)
-                _errorMessage.value = "Tidak dapat mengakses daftar aplikasi karena keterbatasan izin sistem"
+                _errorMessage.value = "Unable to access app list due to system permission restrictions."
             } catch (runtimeException: RuntimeException) {
                 Log.e("SelectAppsViewModel", "Runtime error loading apps", runtimeException)
-                _errorMessage.value = "Terjadi kesalahan saat memuat aplikasi. Silakan coba lagi"
+                _errorMessage.value = "An error occurred while loading apps. Please try again."
             } catch (exception: Exception) {
                 Log.e("SelectAppsViewModel", "Unexpected error loading apps", exception)
-                _errorMessage.value = "Terjadi kesalahan yang tidak terduga. Silakan restart aplikasi atau hubungi support"
+                _errorMessage.value = "An unexpected error occurred. Please restart the app or contact support."
             } finally {
                 _isLoading.value = false
             }
