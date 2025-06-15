@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -163,7 +165,6 @@ fun SelectAppsScreen(navController: NavHostController) {
                             .fillMaxSize()
                             .padding(WindowInsets.systemBars.asPaddingValues()),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         if (filteredItems.isEmpty() && searchQuery.isNotBlank()) {
                             item { EmptySearchResult() }
@@ -178,6 +179,28 @@ fun SelectAppsScreen(navController: NavHostController) {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (selectedCount > 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 16.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(
+                    onClick = { navController.popBackStack() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Next",
+                        color = Color.White
+                    )
                 }
             }
         }
