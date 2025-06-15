@@ -4,22 +4,31 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -47,58 +57,57 @@ import com.example.undistract.ui.components.BackButton
 
 @SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
-fun SelectAppsScreen(
-    navController: NavHostController,
-) {
+fun SelectAppsScreen(navController: NavHostController) {
     val parentEntry = remember {
         navController.getBackStackEntry("add_restriction")
     }
     val viewModel: SelectAppsViewModel = viewModel(parentEntry)
 
     val combinedItems by viewModel.combinedItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val selectedAppsMap = viewModel.selectedApps
+    val isSelectAll by viewModel.isSelectAll.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
 
-    val selectedAppsMap = viewModel.selectedApps
-
     val selectedCount = selectedAppsMap.count { it.value }
 
-    val filteredItems = if (searchQuery.isBlank()) {
-        combinedItems
-    } else {
-        combinedItems.filter {
-            it.name.contains(searchQuery, ignoreCase = true)
+    val filteredItems = remember(searchQuery, combinedItems, selectedAppsMap) {
+        val filtered = if (searchQuery.isBlank()) {
+            combinedItems
+        } else {
+            combinedItems.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
-    }.sortedByDescending { selectedAppsMap[it.identifier] == true }
+        filtered.sortedByDescending { selectedAppsMap[it.identifier] == true }
+    }
 
     Column(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.background)
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // BACK BUTTON
+        // Top AppBar / BackBar
         Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.background)
                 .fillMaxWidth()
                 .padding(start = 16.dp)
-                .height(56.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .height(56.dp)
         ) {
             BackButton(
                 modifier = Modifier.size(24.dp),
                 onClick = { navController.popBackStack() }
             )
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Text(
-                text = stringResource(id = R.string.select_apps),
-                modifier = Modifier.weight(1f)
+                text = stringResource(R.string.select_apps),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
             )
         }
 
-        // SEARCH BAR
+        // Search Field
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -106,75 +115,153 @@ fun SelectAppsScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.placeholder_search_apps)) },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null
-                )
-            },
+            trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-            )
+            enabled = !isLoading && errorMessage == null,
+            colors = OutlinedTextFieldDefaults.colors()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // SELECT ALL TOGGLE
-        val isSelectAll by viewModel.isSelectAll.collectAsState()
-
+        // Select All Toggle
         Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .height(28.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
             Spacer(modifier = Modifier.width(8.dp))
-
             Text(
-                text = stringResource(id = R.string.select_all_with_count, selectedCount),
+                text = stringResource(R.string.select_all_with_count, selectedCount),
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1
+                style = MaterialTheme.typography.bodyLarge
             )
-
             Checkbox(
                 checked = isSelectAll,
                 onCheckedChange = {
                     viewModel.toggleSelectAll(filteredItems.map { it.identifier })
                 },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MaterialTheme.colorScheme.primary,
-                    checkmarkColor = MaterialTheme.colorScheme.background
-                )
+                enabled = !isLoading && errorMessage == null,
+                colors = CheckboxDefaults.colors()
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyColumn(
+        Box(
             modifier = Modifier
-                .background(color = MaterialTheme.colorScheme.background)
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .weight(1f)
+                .fillMaxWidth()
         ) {
-            items(
-                items = filteredItems,
-                key = { item -> item.identifier }
-            ) { item ->
-                val isChecked = selectedAppsMap[item.identifier] ?: false
-
-                ListItem(
-                    item = item,
-                    isChecked = isChecked,
-                    onCheckedChange = { checked ->
-                        viewModel.toggleAppSelection(item.identifier, checked)
+            when {
+                isLoading -> LoadingState()
+                errorMessage != null -> ErrorState(viewModel)
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(WindowInsets.systemBars.asPaddingValues()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        if (filteredItems.isEmpty() && searchQuery.isNotBlank()) {
+                            item { EmptySearchResult() }
+                        } else {
+                            items(filteredItems, key = { it.identifier }) { item ->
+                                val isChecked = selectedAppsMap[item.identifier] ?: false
+                                ListItem(
+                                    item = item,
+                                    isChecked = isChecked,
+                                    onCheckedChange = { viewModel.toggleAppSelection(item.identifier, it) }
+                                )
+                            }
+                        }
                     }
-                )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun LoadingState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(48.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.loading_apps),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+    }
+}
+
+@Composable
+fun ErrorState(viewModel: SelectAppsViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.error_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.error_loading_apps_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = { viewModel.retryLoadApps() }) {
+            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.retry))
+        }
+    }
+}
+
+@Composable
+fun EmptySearchResult() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            modifier = Modifier.size(48.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.no_apps_found),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
     }
 }
 

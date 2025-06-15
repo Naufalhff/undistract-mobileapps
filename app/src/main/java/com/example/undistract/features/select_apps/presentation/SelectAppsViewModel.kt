@@ -31,68 +31,153 @@ class SelectAppsViewModel(
     private val _selectedNotificationType = MutableStateFlow("Head Notification")
     val selectedNotificationType: StateFlow<String> = _selectedNotificationType.asStateFlow()
 
+    // Tambahan untuk error handling
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     init {
         loadCombinedItems()
+        observeSelectedApps()
+        observeSelectedAppsFromRepository()
+    }
 
+    private fun observeSelectedApps() {
         viewModelScope.launch {
-            snapshotFlow { selectedApps.toMap() }
-                .combine(_combinedItems) { selectedMap, items ->
-                    if (items.isEmpty()) false
-                    else items.all { selectedMap[it.identifier] == true }
-                }
-                .collectLatest {
-                    _isSelectAll.value = it
-                }
+            try {
+                snapshotFlow { selectedApps.toMap() }
+                    .combine(_combinedItems) { selectedMap, items ->
+                        if (items.isEmpty()) false
+                        else items.all { selectedMap[it.identifier] == true }
+                    }
+                    .collectLatest { isAllSelected ->
+                        _isSelectAll.value = isAllSelected
+                    }
+            } catch (exception: Exception) {
+                Log.e("SelectAppsViewModel", "Error observing selected apps", exception)
+            }
         }
+    }
 
+    private fun observeSelectedAppsFromRepository() {
         viewModelScope.launch {
-            selectAppsRepository.selectedApps.collectLatest { selectedAppsMap ->
-                selectedAppsMap.forEach { (identifier, isSelected) ->
-                    selectedApps[identifier] = isSelected
+            try {
+                selectAppsRepository.selectedApps.collectLatest { selectedAppsMap ->
+                    selectedAppsMap.forEach { (identifier, isSelected) ->
+                        selectedApps[identifier] = isSelected
+                    }
                 }
+            } catch (exception: Exception) {
+                Log.e("SelectAppsViewModel", "Error observing selected apps from repository", exception)
+                _errorMessage.value = "Terjadi kesalahan saat memuat data aplikasi terpilih"
             }
         }
     }
 
     private fun loadCombinedItems() {
         viewModelScope.launch {
-            val items = appDataRepository.getCombinedList()
-            val combined = items.sortedBy { it.name }
+            try {
+                _isLoading.value = true
+                _errorMessage.value = null
 
-            _combinedItems.value = combined
+                Log.d("SelectAppsViewModel", "Starting to load combined items")
 
-            combined.forEach { item ->
-                selectedApps[item.identifier] = selectAppsRepository.isAppSelected(item.identifier)
+                val items = appDataRepository.getCombinedList()
+
+                if (items.isEmpty()) {
+                    Log.w("SelectAppsViewModel", "No items returned from repository")
+                    _errorMessage.value = "Tidak ada aplikasi yang ditemukan di sistem"
+                    return@launch
+                }
+
+                val combined = items.sortedBy { it.name }
+                _combinedItems.value = combined
+
+                Log.d("SelectAppsViewModel", "Loaded ${combined.size} items successfully")
+
+                // Initialize selected apps dengan error handling
+                combined.forEach { item ->
+                    try {
+                        selectedApps[item.identifier] = selectAppsRepository.isAppSelected(item.identifier)
+                    } catch (exception: Exception) {
+                        Log.w("SelectAppsViewModel", "Error checking selection for ${item.identifier}", exception)
+                        selectedApps[item.identifier] = false
+                    }
+                }
+
+            } catch (securityException: SecurityException) {
+                Log.e("SelectAppsViewModel", "Security error loading apps", securityException)
+                _errorMessage.value = "Tidak dapat mengakses daftar aplikasi karena keterbatasan izin sistem"
+            } catch (runtimeException: RuntimeException) {
+                Log.e("SelectAppsViewModel", "Runtime error loading apps", runtimeException)
+                _errorMessage.value = "Terjadi kesalahan saat memuat aplikasi. Silakan coba lagi"
+            } catch (exception: Exception) {
+                Log.e("SelectAppsViewModel", "Unexpected error loading apps", exception)
+                _errorMessage.value = "Terjadi kesalahan yang tidak terduga. Silakan restart aplikasi atau hubungi support"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    fun toggleSelectAll(identifiers: List<String>) {
-        val shouldSelectAll = !identifiers.all { selectedApps[it] == true }
-
-        identifiers.forEach { id ->
-            selectedApps[id] = shouldSelectAll
-        }
-
-        selectAppsRepository.setSelectedApps(identifiers, shouldSelectAll)
+    fun retryLoadApps() {
+        Log.d("SelectAppsViewModel", "Retrying to load apps")
+        loadCombinedItems()
     }
 
+    fun toggleSelectAll(identifiers: List<String>) {
+        try {
+            val shouldSelectAll = !identifiers.all { selectedApps[it] == true }
+
+            identifiers.forEach { id ->
+                selectedApps[id] = shouldSelectAll
+            }
+
+            selectAppsRepository.setSelectedApps(identifiers, shouldSelectAll)
+            Log.d("SelectAppsViewModel", "Select all toggled: $shouldSelectAll for ${identifiers.size} items")
+
+        } catch (exception: Exception) {
+            Log.e("SelectAppsViewModel", "Error toggling select all", exception)
+        }
+    }
 
     fun toggleAppSelection(identifier: String, isSelected: Boolean) {
-        selectedApps[identifier] = isSelected
-        selectAppsRepository.toggleAppSelection(identifier, isSelected)
+        try {
+            selectedApps[identifier] = isSelected
+            selectAppsRepository.toggleAppSelection(identifier, isSelected)
+            Log.d("SelectAppsViewModel", "App selection toggled: $identifier = $isSelected")
+
+        } catch (exception: Exception) {
+            Log.e("SelectAppsViewModel", "Error toggling app selection for $identifier", exception)
+        }
     }
 
     fun getSelectedIdentifiers(): List<String> {
-        return selectAppsRepository.getSelectedApps()
+        return try {
+            selectAppsRepository.getSelectedApps()
+        } catch (exception: Exception) {
+            Log.e("SelectAppsViewModel", "Error getting selected identifiers", exception)
+            emptyList()
+        }
     }
 
     fun getSelectedItems(): List<AppOrUrlItem> {
-        return combinedItems.value.filter { selectedApps[it.identifier] == true }
+        return try {
+            combinedItems.value.filter { selectedApps[it.identifier] == true }
+        } catch (exception: Exception) {
+            Log.e("SelectAppsViewModel", "Error getting selected items", exception)
+            emptyList()
+        }
     }
 
     fun updateSelectedNotificationType(notificationType: String) {
-        Log.d("SelectAppsViewModel", "Updating notification type to: $notificationType")
-        _selectedNotificationType.value = notificationType
+        try {
+            Log.d("SelectAppsViewModel", "Updating notification type to: $notificationType")
+            _selectedNotificationType.value = notificationType
+        } catch (exception: Exception) {
+            Log.e("SelectAppsViewModel", "Error updating notification type", exception)
+        }
     }
 }
