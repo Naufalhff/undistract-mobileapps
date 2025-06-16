@@ -34,7 +34,6 @@ fun ParentalControlScreen(
 ) {
     val isVerified by viewModel.isVerified.collectAsState()
     val context = LocalContext.current
-    var isDeviceAdminActive by remember { mutableStateOf(DeviceAdminUtils.isDeviceAdminActive(context)) }
 
     LaunchedEffect(isVerified) {
         if (isVerified) {
@@ -56,22 +55,6 @@ fun ParentalControlScreen(
                 navController = navController,
             )
         }
-    }
-
-    Row {
-        Text("Proteksi uninstall")
-        Switch(
-            checked = isDeviceAdminActive,
-            onCheckedChange = { checked ->
-                if (checked) {
-                    DeviceAdminUtils.requestEnableDeviceAdmin(context)
-                } else {
-                    DeviceAdminUtils.requestDisableDeviceAdmin(context)
-                }
-                // Perbarui status setelah user kembali ke aplikasi
-                isDeviceAdminActive = DeviceAdminUtils.isDeviceAdminActive(context)
-            }
-        )
     }
 }
 

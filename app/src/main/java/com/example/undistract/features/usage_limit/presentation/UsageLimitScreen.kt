@@ -62,6 +62,7 @@ import com.example.undistract.features.block_schedules.data.local.BlockSchedules
 import com.example.undistract.features.variable_session.data.VariableSessionRepository
 import com.example.undistract.features.block_permanent.data.BlockPermanentRepository
 import com.example.undistract.features.block_permanent.data.local.BlockPermanentEntity
+import com.example.undistract.features.parental_control.DeviceAdminUtils
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -205,6 +206,9 @@ fun UsageLimitScreen(
         sharedViewModel.setAppLimitInfo(app)
         navController.navigate("editUsageLimit?isParental=$isParental")
     }
+
+    // State for device admin toggle
+    var isDeviceAdminActive by remember { mutableStateOf(DeviceAdminUtils.isDeviceAdminActive(context)) }
 
     Scaffold(
         topBar = {
@@ -463,6 +467,40 @@ fun UsageLimitScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+                            }
+                        }
+
+                        // Add uninstall protection toggle only in parental mode
+                        if (isParental) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Proteksi Uninstall",
+                                    fontSize = 16.sp
+                                )
+                                Switch(
+                                    checked = isDeviceAdminActive,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            DeviceAdminUtils.requestEnableDeviceAdmin(context)
+                                        } else {
+                                            DeviceAdminUtils.requestDisableDeviceAdmin(context)
+                                        }
+                                        // Perbarui status setelah user kembali ke aplikasi
+                                        isDeviceAdminActive = DeviceAdminUtils.isDeviceAdminActive(context)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = Purple40,
+                                        uncheckedThumbColor = Color.White,
+                                        uncheckedTrackColor = Color.LightGray
+                                    )
+                                )
                             }
                         }
 
